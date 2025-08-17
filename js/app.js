@@ -142,7 +142,7 @@
         });
       });
 
-      // Transactions Table without Month column
+      // Transactions Table 
       transactionTableBody.innerHTML = '';
       filtered.forEach(tr => {
         const formattedDate = new Date(tr.entryDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -219,7 +219,6 @@
 
     monthSelector.addEventListener('change', () => {
       selectedMonth = monthSelector.value;
-      // Update the entry date to the first day of the selected month
       entryDateInput.value = `${selectedMonth}-01`;
       updateDisplayedMonth();
       renderTables();
