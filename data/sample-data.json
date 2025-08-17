@@ -1,0 +1,19 @@
+{
+  "defaultBudgets": {
+    "income": {
+      "UCO": 1000,
+      "GONG": 1300
+    },
+    "expense": {
+      "Rent": 300,
+      "Grocery": 200,
+      "Food": 100,
+      "Petrol": 120,
+      "Home": 250,
+      "Gym": 80,
+      "Mobile": 60,
+      "Extra": 50,
+      "Insurance": 150
+    }
+  }
+}

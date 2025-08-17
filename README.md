@@ -35,17 +35,12 @@ It helps you **track income & expenses**, **analyze budgets by category**, and *
 
 ---
 
-## 📂 Code Structure  
 
-- **HTML** → Layout with forms, tables, and headings.  
-- **Tailwind CSS** → For responsive styling (CDN).  
-- **JavaScript** → Handles logic:  
-  - Transaction storage (in memory).  
-  - Input validation & dynamic updates.  
-  - Month-based filtering.  
-  - Budget summaries & adjustments.  
-  - Date synchronization with selected month.  
-
+## File Structure
+- `index.html` - Main application file
+- `css/styles.css` - Custom styles
+- `js/app.js` - Application logic
+- `data/` - Sample data files
 ---
 
 ## ⚠️ Important Notes  
