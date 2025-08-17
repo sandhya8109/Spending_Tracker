@@ -1,89 +1,90 @@
-# 💰 Monthly Budget Analyzer  
+💰 Monthly Budget Analyzer
 
-A simple yet powerful **web-based budgeting tool** built with **HTML, JavaScript, and Tailwind CSS**.  
-It helps you **track income & expenses**, **analyze budgets by category**, and **stay on top of your financial goals** — all in one place.  
+A simple yet powerful web-based budgeting tool built with HTML, JavaScript, and Tailwind CSS and deployed on Netlify.
+It helps you track income & expenses, analyze budgets by category, and visualize financial trends with interactive charts — all in one place.
 
----
+🚀 Features
 
-## 🚀 Features  
+📅 Select a Month → View & manage budget entries for any specific period.
 
-- 📅 **Select a Month** → View & manage budget entries for a specific period.  
-- ➕ **Add Transactions** → Add income/expense entries with description, amount, category, subcategory, and date.  
-- 🔎 **Smart Filtering** → Automatically shows only the transactions of the selected month.  
-- 📊 **Budget Summaries** → View income & expense summaries with budgets, actuals, and remaining balances.  
-- ⚡ **Dynamic Budgets** → Adjust budgets on the fly (no zero-value options, increments start at 50).  
-- ⏱ **Real-Time Updates** → Totals & balances update instantly as you add entries.  
-- ✅ **Validation** → Ensures clean input (e.g., no numbers in item descriptions).  
-- 📱 **Responsive UI** → Styled with Tailwind CSS for clean and modern look.  
+➕ Add Transactions → Add income/expense entries with description, amount, category, and date.
 
----
+✏️ Edit & Delete Transactions → Update or remove entries anytime.
 
-## 📝 How to Use  
+🔎 Smart Filtering → Automatically displays transactions for the selected month.
 
-1. **Select Month** → Use the month picker at the top.  
-2. **Add Entry** → Fill out:  
-   - Item description *(no numbers allowed)*  
-   - Amount *(positive number)*  
-   - Date *(defaults to 1st day of month, must stay within month)*  
-   - Category *(Income/Expense)*  
-   - Subcategory *(auto-adjusts by category)*  
-3. **Submit Entry** → Click **Add Entry** to add to transaction list.  
-4. **View Transactions** → See all records in the **All Transactions** table.  
-5. **Analyze Budgets** → Review summaries showing earned/spent, budgeted, and remaining balances.  
-6. **Adjust Budgets** → Change via dropdowns (increments of 50, no zero budgets).  
-7. **Final Summary** → Shows total earned, spent, and balance for the month.  
+📊 Analytics Dashboard → Visualize your finances with:
 
----
+💸 Expense Breakdown
 
+📈 6-Month Spending Trends
 
-## File Structure
-- `index.html` - Main application file
-- `css/styles.css` - Custom styles
-- `js/app.js` - Application logic
-- `data/` - Sample data files
----
+🎯 Budget vs Actual comparison
 
-## ⚠️ Important Notes  
+📊 Savings Rate & Budget Usage
 
-- ❌ Item descriptions **cannot contain numbers**.  
-- 🚫 Budgets **cannot be zero** (minimum is 50).  
-- 📆 Dates default to **first day of selected month**.  
-- 💾 Data is **not persistent** (reset on reload).  
+💾 Persistent Storage → Saves your data using localStorage, so it remains across sessions.
 
----
+📤 Export & Import Data → Backup or restore your transactions.
 
-## 📦 Requirements  
+🗑 Clear All → Reset with one click.
 
-- Modern web browser (with JavaScript enabled).  
-- Internet connection (for Tailwind CSS CDN).  
+⚡ Real-Time Updates → Totals & balances update instantly as you add entries.
 
----
+📱 Responsive UI → Clean design built with Tailwind CSS for a modern, mobile-friendly experience.
 
-## 💡 Customization & Extensions  
+📝 How to Use
 
-- 💾 Add persistent storage (`localStorage` or database).  
-- ✏️ Enable **editing & deleting** transactions.  
-- 📈 Add **charts/graphs** for visual trends.  
-- 💱 Multi-currency support.  
-- 🚨 Budget limit warnings/notifications.  
+Select Month → Pick a month at the top.
 
----
+Add Entry → Fill out description, amount, date, type (Income/Expense), and category.
 
-## 🔮 Future Backend & Dynamic Analysis  
+Submit Entry → Click Add Entry to save the transaction.
 
-For advanced insights, add a backend for **persistent data storage** & **analysis**:  
+Edit/Delete → Update or remove any transaction from the list.
 
-- Use **Python (Pandas, NumPy)** for financial analysis.  
-- Create **visual reports** with Matplotlib & Seaborn.  
-- Build interactive dashboards with **Streamlit** or **Dash**.  
-- Add features like:  
-  - Forecasting 💡  
-  - Anomaly detection ⚠️  
-  - Personalized financial insights 📊  
+View Dashboard → Check budget usage, savings rate, and visual analytics.
 
----
+Export/Import Data → Manage your records easily.
 
+Clear All → Start fresh at any time.
 
+📂 File Structure
 
-This project is open-source under the **MIT License**.  
+index.html – Main application file
 
+css/styles.css – Custom styles
+
+js/app.js – Application logic
+
+data/ – Sample data files
+
+⚠️ Important Notes
+
+🚫 Dates must stay within the selected month.
+
+📆 Default date is set to the first day of the selected month.
+
+💾 Data is saved in the browser (localStorage).
+
+📦 Requirements
+
+Modern web browser (with JavaScript enabled).
+
+Internet connection (for Tailwind CSS CDN).
+
+🔮 Future Enhancements
+
+🌐 Backend integration (Node.js, Express, or Python/Flask) for cross-device sync.
+
+📊 Forecasting & anomaly detection for smarter insights.
+
+🔔 Budget alerts & notifications.
+
+💱 Multi-currency support.
+
+🌍 Deployment
+
+Hosted on Netlify: Live Demo
+
+Source Code: GitHub Repository
