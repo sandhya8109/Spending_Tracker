@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Monthly Budget Analyzer</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="css/styles.css" rel="stylesheet">
   <script src="js/app.js" defer></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -13,8 +12,22 @@
   <!-- Header -->
   <header class="bg-white shadow-sm border-b">
     <div class="max-w-md mx-auto px-4 py-6">
-      <h1 class="text-2xl font-bold text-gray-900 text-center">Monthly Budget Tracker</h1>
-      <p class="text-center text-gray-600 mt-1">I got you</p>
+      <h1 class="text-2xl font-bold text-gray-900 text-center">Budget Tracker</h1>
+      <p class="text-center text-gray-600 mt-1">Simple. Clean. Effective.</p>
+      
+      <!-- Admin Actions -->
+      <div class="flex justify-center space-x-2 mt-3">
+        <button onclick="exportData()" class="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
+          Export Data
+        </button>
+        <input type="file" id="importFile" accept=".json" onchange="importData(event)" class="hidden">
+        <button onclick="document.getElementById('importFile').click()" class="text-xs bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">
+          Import Data
+        </button>
+        <button onclick="clearAllData()" class="text-xs bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+          Clear All
+        </button>
+      </div>
     </div>
   </header>
 
@@ -97,16 +110,20 @@
     <div class="bg-white rounded-xl shadow-sm overflow-hidden">
       <div class="flex">
         <button onclick="showTab('transactions')" id="tab-transactions" 
-                class="flex-1 py-3 px-4 text-center font-medium text-blue-600 bg-blue-50 border-b-2 border-blue-600">
+                class="flex-1 py-3 px-2 text-center font-medium text-blue-600 bg-blue-50 border-b-2 border-blue-600 text-xs">
           Recent
         </button>
         <button onclick="showTab('expenses')" id="tab-expenses"
-                class="flex-1 py-3 px-4 text-center font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent">
+                class="flex-1 py-3 px-2 text-center font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent text-xs">
           Expenses
         </button>
         <button onclick="showTab('income')" id="tab-income"
-                class="flex-1 py-3 px-4 text-center font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent">
+                class="flex-1 py-3 px-2 text-center font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent text-xs">
           Income
+        </button>
+        <button onclick="showTab('analytics')" id="tab-analytics"
+                class="flex-1 py-3 px-2 text-center font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent text-xs">
+          📊 Charts
         </button>
       </div>
 
@@ -133,6 +150,44 @@
           <div id="incomeList"></div>
         </div>
       </div>
+
+      <!-- Analytics Tab -->
+      <div id="content-analytics" class="p-6 hidden">
+        <h3 class="text-lg font-semibold text-purple-700 mb-4">📊 Analytics Dashboard</h3>
+        
+        <!-- Key Insights -->
+        <div id="analyticsStats" class="mb-6"></div>
+        
+        <!-- Expense Breakdown Chart -->
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+          <h4 class="font-medium text-gray-800 mb-3">💸 Expense Breakdown</h4>
+          <div class="flex flex-col lg:flex-row items-center space-y-4 lg:space-y-0 lg:space-x-4">
+            <canvas id="expensePieChart" width="200" height="200" class="flex-shrink-0"></canvas>
+            <div id="expenseLegend" class="flex-1 text-xs space-y-1 max-h-40 overflow-y-auto"></div>
+          </div>
+        </div>
+        
+        <!-- Monthly Trends Chart -->
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+          <h4 class="font-medium text-gray-800 mb-3">📈 6-Month Trends</h4>
+          <canvas id="monthlyTrendsChart" width="300" height="180"></canvas>
+        </div>
+        
+        <!-- Budget vs Actual -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h4 class="font-medium text-gray-800 mb-3">🎯 Budget vs Actual</h4>
+          <canvas id="budgetComparisonChart" width="300" height="250"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debug Info -->
+    <div class="bg-blue-50 rounded-lg p-4 border border-yellow-200">
+      <h4 class="font-medium text-yellow-800 mb-2">Debug Info</h4>
+      <div id="debugInfo" class="text-xs text-yellow-700"></div>
+      <button onclick="showDataStats()" class="mt-2 text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-yellow-600">
+        Show Stats
+      </button>
     </div>
 
   </div>
@@ -144,6 +199,7 @@
     <table><tbody id="incomeTable"></tbody></table>
     <div id="finalSummary"></div>
   </div>
+
 
 </body>
 </html>
