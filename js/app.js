@@ -312,7 +312,7 @@ function renderMobileView() {
     transactionList.innerHTML = '<div class="text-center text-gray-500 py-8">No transactions for this month</div>';
   } else {
     const sortedTransactions = [...filtered].sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
-    transactionList.innerHTML = sortedTransactions.slice(0, 10).map(createTransactionCard).join('');
+    transactionList.innerHTML = sortedTransactions.map(createTransactionCard).join('');
   }
   
   // Render expense categories
@@ -969,23 +969,24 @@ function saveData() {
     lastSaved: new Date().toISOString()
   };
   
-  // Use in-memory storage instead of localStorage
-  window.budgetData = data;
-  console.log('Data saved to memory:', transactions.length, 'transactions');
+  localStorage.setItem('budgetTrackerData', JSON.stringify(data));
+  console.log('Data saved to localStorage:', transactions.length, 'transactions');
 }
 
 function loadData() {
-  // Load from in-memory storage
-  const data = window.budgetData;
-  if (data) {
+  const savedData = localStorage.getItem('budgetTrackerData');
+  if (savedData) {
+    const data = JSON.parse(savedData);
     transactions = data.transactions || [];
     adjustableBudgets = data.adjustableBudgets || adjustableBudgets;
     selectedMonth = data.selectedMonth || selectedMonth;
-    console.log('Data loaded from memory:', transactions.length, 'transactions');
+    console.log('Data loaded from localStorage:', transactions.length, 'transactions');
   } else {
     console.log('No saved data found, using defaults');
   }
 }
+  
+  
 
 function showNotification(message, type = 'info', duration = 3000) {
   // Remove existing notifications
