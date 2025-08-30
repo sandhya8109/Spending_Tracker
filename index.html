@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Monthly Budget Analyzer</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Ensure charts work -->
   <script src="js/app.js" defer></script>
+<script src="js/ai-integration.js" defer></script>
+<script src="js/financial-goals.js" defer></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
   
@@ -13,7 +17,6 @@
   <header class="bg-white shadow-sm border-b">
     <div class="max-w-md mx-auto px-4 py-6">
       <h1 class="text-2xl font-bold text-gray-900 text-center">Budget Tracker</h1>
-<!--<p class="text-center text-gray-400 mt-1">No need to worry when tracker is here</p>-->
       
       <!-- Admin Actions -->
       <div class="flex justify-center space-x-2 mt-3">
@@ -27,8 +30,8 @@
         <button onclick="clearAllData()" class="text-xs bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
           Clear All
         </button>
-            </div>
-            </div>
+      </div>
+    </div>
   </header>
 
   <div class="max-w-md mx-auto px-4 py-6 space-y-6">
@@ -65,6 +68,8 @@
           <label for="item" class="block text-sm font-medium text-gray-700 mb-2">What did you spend on?</label>
           <input type="text" id="item" required placeholder="e.g., Groceries, Salary"
                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <!-- Auto-category suggestion -->
+          <p id="aiSuggestion" class="text-xs text-blue-500 mt-1"></p>
         </div>
         
         <div class="grid grid-cols-2 gap-4">
@@ -98,6 +103,17 @@
             </select>
           </div>
         </div>
+
+        <!-- Receipt OCR Upload -->
+         <div class="mb-4">
+    <label for="receiptUpload" class="block text-sm font-medium text-gray-700 mb-2">
+        Upload Receipt (Optional)
+    </label>
+    <input type="file" id="receiptUpload" accept="image/*" 
+           class="w-full p-2 border border-gray-300 rounded-lg">
+    <div id="ocrResult" class="text-xs mt-1"></div>
+</div>
+        
         
         <button type="submit" 
                 class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-lg text-lg transition-colors">
@@ -174,9 +190,15 @@
         </div>
         
         <!-- Budget vs Actual -->
-        <div class="bg-gray-50 rounded-lg p-4">
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
           <h4 class="font-medium text-gray-800 mb-3">🎯 Budget vs Actual</h4>
           <canvas id="budgetComparisonChart" width="300" height="250"></canvas>
+        </div>
+
+        <!-- AI Insights Section -->
+        <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <h4 class="font-medium text-blue-800 mb-2">🤖 Smart Insights</h4>
+          <div id="aiInsights" class="text-sm text-blue-700 space-y-1"></div>
         </div>
       </div>
     </div>
@@ -199,7 +221,6 @@
     <table><tbody id="incomeTable"></tbody></table>
     <div id="finalSummary"></div>
   </div>
-
 
 </body>
 </html>
