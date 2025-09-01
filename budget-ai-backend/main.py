@@ -17,11 +17,26 @@ import cv2
 import pytesseract
 from datetime import datetime 
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+import os
+import platform
 
-image = cv2.imread(r"C:\Users\artha\Desktop\IMG_4705.jpeg")
-text = pytesseract.image_to_string(image)
-print(text)
+# Auto-detect Tesseract installation
+if platform.system() == "Windows":
+    # Try common Windows paths
+    possible_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        r"C:\Users\{}\AppData\Local\Programs\Tesseract-OCR\tesseract.exe".format(os.getenv('USERNAME'))
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            pytesseract.pytesseract.tesseract_cmd = path
+            break
+    else:
+        print("Tesseract not found. Please install it or update the path.")
+elif platform.system() == "Darwin":  # macOS
+    pytesseract.pytesseract.tesseract_cmd = '/usr/local/bin/tesseract'
 
 # 1️⃣ Define FastAPI app first
 app = FastAPI(title="AI Budget Tracker API", version="1.0.0")
@@ -40,7 +55,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Pydantic models for request/response
 class TransactionInput(BaseModel):
     item: str
