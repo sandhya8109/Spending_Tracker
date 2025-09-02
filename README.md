@@ -1,90 +1,232 @@
-💰 Monthly Budget Analyzer
+# Monthly Budget Analyzer
 
-A simple yet powerful web-based budgeting tool built with HTML, JavaScript, and Tailwind CSS and deployed on Netlify.
-It helps you track income & expenses, analyze budgets by category, and visualize financial trends with interactive charts — all in one place.
+A smart, AI-powered personal finance management application that helps you track expenses, analyze spending patterns, and make informed financial decisions.
 
-🚀 Features
+## ✨ Features
 
-📅 Select a Month → View & manage budget entries for any specific period.
+### 📊 Core Functionality
+- **Transaction Management**: Add, edit, and categorize income and expenses
+- **Visual Analytics**: Interactive charts and graphs for spending visualization
+- **Budget Tracking**: Set and monitor budgets for different categories
+- **Monthly Overview**: Comprehensive financial summaries by month
 
-➕ Add Transactions → Add income/expense entries with description, amount, category, and date.
+### 🤖 AI-Powered Features
+- **Smart Categorization**: AI suggests categories based on transaction descriptions
+- **Receipt Processing**: Take photos of receipts for automatic data extraction
+- **Spending Insights**: AI-generated analysis of your financial patterns
+- **Pattern Learning**: System learns from your categorization preferences
 
-✏️ Edit & Delete Transactions → Update or remove entries anytime.
+### 📱 User Experience
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Intuitive Interface**: Clean, modern design with easy navigation
+- **Real-time Updates**: Instant feedback and live calculations
+- **Data Persistence**: Local storage ensures your data is saved
 
-🔎 Smart Filtering → Automatically displays transactions for the selected month.
+## 🚀 Getting Started
 
-📊 Analytics Dashboard → Visualize your finances with:
+### Prerequisites
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+- No server setup required for basic functionality
 
-💸 Expense Breakdown
+### Installation
 
-📈 6-Month Spending Trends
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/monthly-budget-analyzer.git
+   cd monthly-budget-analyzer
+   ```
 
-🎯 Budget vs Actual comparison
+2. **Frontend Setup**
+   ```bash
+   # Simply open index.html in your browser
+   open index.html
+   # or serve locally
+   python -m http.server 8080
+   ```
 
-📊 Savings Rate & Budget Usage
+3. **Backend Setup (Optional - for enhanced AI features)**
+   ```bash
+   # Navigate to backend directory
+   cd budget-ai-backend
+   
+   # Create virtual environment
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   .\.venv\Scripts\Activate.ps1
+   # Install dependencies
+   pip install -r requirements.txt
+   
+   # Start the FastAPI server
+   python main.py
+   # Server will run on http://0.0.0:8000
+   ```
 
-💾 Persistent Storage → Saves your data using localStorage, so it remains across sessions.
+4. **Start using**
+   - Open your browser to `index.html` or `http://localhost:8080`
+   - Backend API will be available at `http://localhost:8000` (if running)
+   - Begin adding transactions and explore AI features
 
-📤 Export & Import Data → Backup or restore your transactions.
+## 📖 Usage Guide
 
-🗑 Clear All → Reset with one click.
+### Adding Transactions
+1. Fill in the transaction details (item, amount, date)
+2. Select transaction type (income/expense)
+3. Choose or let AI suggest a category
+4. Upload receipt (optional) or use camera feature
+5. Click "Add Entry"
 
-⚡ Real-Time Updates → Totals & balances update instantly as you add entries.
+### AI Features
+- **Smart Suggestions**: Type transaction descriptions to get AI category suggestions
+- **Receipt Scanning**: Use "Take Photo of Receipt" for automatic data extraction
+- **Analytics**: View AI-generated insights in the Charts tab
 
-📱 Responsive UI → Clean design built with Tailwind CSS for a modern, mobile-friendly experience.
+### Viewing Analytics
+- Switch to the "Charts" tab to see visual representations
+- Review AI insights for spending patterns and recommendations
+- Monitor budget utilization and savings rates
 
-📝 How to Use
+## 🛠️ Technology Stack
 
-Select Month → Pick a month at the top.
+### Frontend
+- **HTML5** - Semantic structure and modern web standards
+- **CSS3 & Tailwind** - Responsive design and utility-first styling
+- **Vanilla JavaScript** - Core application logic and DOM manipulation
+- **Chart.js** - Interactive charts and data visualization
 
-Add Entry → Fill out description, amount, date, type (Income/Expense), and category.
+### Backend (Optional)
+- **FastAPI** - Modern Python web framework for AI services
+- **Python 3.x** - Backend runtime environment
+- **Uvicorn** - ASGI server for FastAPI applications
+- **AI Libraries** - OCR processing and pattern recognition
 
-Submit Entry → Click Add Entry to save the transaction.
+### AI Integration
+- **Pattern Recognition** - Local categorization algorithms
+- **OCR Processing** - Receipt text extraction via backend API
+- **Machine Learning** - User behavior learning and adaptation
+- **FastAPI Backend** - AI service integration at http://localhost:8000
 
-Edit/Delete → Update or remove any transaction from the list.
+### Data Storage
+- **LocalStorage** - Client-side data persistence
+- **JSON Format** - Structured data management
+- **Export/Import** - Data portability features
 
-View Dashboard → Check budget usage, savings rate, and visual analytics.
+## 🏗️ Architecture
 
-Export/Import Data → Manage your records easily.
+```
+monthly-budget-analyzer/
+├── .venv/                   # Python virtual environment
+├── assets/                  # Static assets and resources
+├── budget-ai-backend/       # AI backend service
+│   ├── __pycache__/        
+│   ├── venv/               # Backend virtual environment
+│   └── main.py             # FastAPI backend server
+├── css/
+│   └── styles.css          # Application styling
+├── data/
+│   └── sample-data.json    # Sample transaction data
+├── .gitattributes          # Git configuration
+├── ai-integration.js       # AI features and smart categorization
+├── app.js                  # Main application logic
+├── index.html              # Main application interface
+├── README.md               # Project documentation
+└── requirements.txt        # Python dependencies
+```
 
-Clear All → Start fresh at any time.
+## 🔧 Configuration
 
-📂 File Structure
+### AI Backend (Optional)
+The app works offline but can connect to an AI backend for enhanced features:
 
-index.html – Main application file
+```javascript
+// Configure AI backend URL in ai-integration.js
+const API_BASE_URL = 'http://localhost:8000/api';
+```
 
-css/styles.css – Custom styles
+### Customization
+- Modify categories in `app.js`
+- Adjust AI patterns in `ai-integration.js`
+- Customize styling in CSS files
+- Configure chart options in `charts.js`
 
-js/app.js – Application logic
+## 📊 AI Features Deep Dive
 
-data/ – Sample data files
+### Smart Categorization
+- **Pattern Matching**: Recognizes common merchant names and keywords
+- **User Learning**: Adapts to your categorization preferences
+- **Confidence Scoring**: Shows how certain the AI is about suggestions
+- **Manual Override**: Easy to accept, reject, or modify suggestions
 
-⚠️ Important Notes
+### Receipt Processing
+- **Camera Integration**: Direct photo capture from device camera
+- **OCR Extraction**: Automatic text recognition from receipt images
+- **Data Parsing**: Intelligent extraction of amount, date, and vendor
+- **Form Auto-fill**: Seamless integration with transaction form
 
-🚫 Dates must stay within the selected month.
+### Analytics & Insights
+- **Spending Patterns**: Identifies trends and unusual spending
+- **Budget Alerts**: Proactive warnings about budget overruns
+- **Category Analysis**: Detailed breakdown by spending categories
+- **Savings Tracking**: Monitors savings rate and financial health
 
-📆 Default date is set to the first day of the selected month.
+## 🤝 Contributing
 
-💾 Data is saved in the browser (localStorage).
+We welcome contributions! Here's how to get started:
 
-📦 Requirements
+1. **Fork the repository**
+2. **Create a feature branch**
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. **Commit your changes**
+   ```bash
+   git commit -m 'Add amazing feature'
+   ```
+4. **Push to the branch**
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+5. **Open a Pull Request**
 
-Modern web browser (with JavaScript enabled).
+### Development Guidelines
+- Follow existing code style and conventions
+- Add comments for complex logic
+- Test features across different browsers
+- Update documentation for new features
 
-Internet connection (for Tailwind CSS CDN).
+## 📝 License
 
-🔮 Future Enhancements
 
-🌐 Backend integration (Node.js, Express, or Python/Flask) for cross-device sync.
+## 🙏 Acknowledgments
 
-📊 Forecasting & anomaly detection for smarter insights.
+- **Chart.js** - Beautiful charts and graphs
+- **Tailwind CSS** - Utility-first CSS framework
+- **OpenAI API** - AI-powered categorization (optional backend)
+- **Contributors** - Thanks to all who have contributed to this project
 
-🔔 Budget alerts & notifications.
+## 📞 Support & Contact
 
-💱 Multi-currency support.
+- **Issues**: [GitHub Issues](https://github.com/sandhya8109/monthly-budget-analyzer/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/sandhya8109/monthly-budget-analyzer/discussions)
+- **Email**: sandyrimal07@example.com
 
-🌍 Deployment
+## 🔮 Roadmap
 
-Hosted on Netlify: Live Demo
+### Upcoming Features
+- [ ] Bank account integration
+- [ ] Multi-currency support
+- [ ] Advanced AI insights
+- [ ] Mobile app development
+- [ ] Cloud synchronization
+- [ ] Collaborative budgeting
+- [ ] Financial goal tracking
 
-Source Code: GitHub Repository
+### Version History
+- **v1.2.0** - AI integration and receipt scanning
+- **v1.1.0** - Enhanced analytics and charts
+- **v1.0.0** - Initial release with core features
+
+---
+
+**Made with ❤️ for better financial management**
+
+*Star ⭐ this repository if it helps you manage your finances better!*
