@@ -1,8 +1,13 @@
-// Configuration
-const subcategories = {
+// Enhanced Budget Tracker - Main Application Logic
+// Integrates with login system and dashboard structure
+
+// Configuration - Enhanced with user-specific categories
+const defaultSubcategories = {
   income: [
     { value: 'UCO', text: '🏫 UCO', budget: 1000 },
-    { value: 'GONG', text: '💼 Private', budget: 1300 }
+    { value: 'GONG', text: '💼 Private', budget: 1300 },
+    { value: 'Freelance', text: '💻 Freelance', budget: 500 },
+    { value: 'Investment', text: '📈 Investment', budget: 200 }
   ],
   expense: [
     { value: 'Rent', text: '🏠 Rent', budget: 300 },
@@ -18,12 +23,17 @@ const subcategories = {
   ]
 };
 
-// Global variables
+// Dynamic categories that merge default + user custom categories
+let subcategories = JSON.parse(JSON.stringify(defaultSubcategories));
+
+// Global variables - Enhanced for user management
 let transactions = [];
 let adjustableBudgets = {
   income: {
     UCO: 1000,
-    GONG: 1300
+    GONG: 1300,
+    Freelance: 500,
+    Investment: 200
   },
   expense: {
     Rent: 300,
@@ -47,12 +57,19 @@ let analyticsData = {
 
 let selectedMonth = '2025-08';
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('Initializing comprehensive budget tracker...');
+// User-specific data management
+let userDataLoaded = false;
+
+// Initialize the budget tracker functionality (called after login)
+function initializeBudgetTracker() {
+  console.log('Initializing budget tracker for user:', currentUser?.name);
   
   try {
-    showNotification('Loading your budget data...', 'info', 1500);
+    // Load user-specific data
+    loadUserData();
+    
+    // Merge user's custom categories
+    mergeUserCategories();
     
     // Get DOM elements
     const budgetForm = document.getElementById('budgetForm');
@@ -65,13 +82,35 @@ document.addEventListener('DOMContentLoaded', function() {
     selectedMonth = monthSelector.value;
     entryDateInput.value = `${selectedMonth}-01`;
     
-    // Load saved data
-    loadData();
+    // Setup event listeners (remove existing ones first to prevent duplicates)
+    if (budgetForm) {
+      budgetForm.removeEventListener('submit', handleFormSubmit);
+      budgetForm.addEventListener('submit', handleFormSubmit);
+    }
     
-    // Setup event listeners
-    budgetForm.addEventListener('submit', handleFormSubmit);
-    categorySelect.addEventListener('change', updateSubcategories);
-    monthSelector.addEventListener('change', handleMonthChange);
+    if (categorySelect) {
+      categorySelect.removeEventListener('change', updateSubcategories);
+      categorySelect.addEventListener('change', updateSubcategories);
+    }
+    
+    if (monthSelector) {
+      monthSelector.removeEventListener('change', handleMonthChange);
+      monthSelector.addEventListener('change', handleMonthChange);
+    }
+    
+    // Receipt upload handler
+    const receiptUpload = document.getElementById('receiptUpload');
+    if (receiptUpload) {
+      receiptUpload.removeEventListener('change', handleReceiptUpload);
+      receiptUpload.addEventListener('change', handleReceiptUpload);
+    }
+    
+    // Item input for AI suggestions
+    const itemInput = document.getElementById('item');
+    if (itemInput) {
+      itemInput.removeEventListener('input', handleItemInput);
+      itemInput.addEventListener('input', handleItemInput);
+    }
     
     // Initial render
     updateSubcategories();
@@ -80,50 +119,106 @@ document.addEventListener('DOMContentLoaded', function() {
     renderTables();
     initializeCharts();
     
+    // Generate AI insights if on analytics page
+    if (currentPage === 'analytics') {
+      setTimeout(() => generateAIInsights(), 1000);
+    }
+    
     // Auto-save every 30 seconds
     setInterval(() => {
-      if (transactions.length > 0) {
-        saveData();
+      if (transactions.length > 0 && currentUser) {
+        saveUserData();
       }
     }, 30000);
     
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        saveData();
-        showNotification('Data saved manually', 'success', 1500);
-      }
-      
-      if (e.key === 'Escape' && document.activeElement.closest('#budgetForm')) {
-        budgetForm.reset();
-        subcategorySelect.innerHTML = '<option value="">Select category</option>';
-        showNotification('Form cleared', 'info', 1500);
-      }
-    });
-    
-    // Show welcome message
-    if (transactions.length === 0) {
-      setTimeout(() => {
-        showNotification('Welcome! Start by adding your first transaction below.', 'info', 4000);
-      }, 2000);
-    } else {
-      setTimeout(() => {
-        showNotification(`Loaded ${transactions.length} transactions`, 'success', 2000);
-      }, 1000);
-    }
-    
-    console.log('App initialized successfully with', transactions.length, 'transactions');
+    userDataLoaded = true;
     updateDebugInfo();
     
+    console.log('Budget tracker initialized successfully with', transactions.length, 'transactions');
+    
   } catch (error) {
-    console.error('Initialization error:', error);
-    showNotification('Error loading app. Please refresh the page.', 'error', 5000);
+    console.error('Budget tracker initialization error:', error);
+    showNotification('Error loading budget data. Please refresh the page.', 'error', 5000);
   }
-});
+}
 
+// User-specific data management
+function loadUserData() {
+  if (!currentUser) return;
+  
+  const userDataKey = `budgetData_${currentUser.id}`;
+  const savedData = localStorage.getItem(userDataKey);
+  
+  if (savedData) {
+    try {
+      const data = JSON.parse(savedData);
+      transactions = data.transactions || [];
+      adjustableBudgets = data.adjustableBudgets || adjustableBudgets;
+      selectedMonth = data.selectedMonth || selectedMonth;
+      console.log(`Loaded ${transactions.length} transactions for user: ${currentUser.name}`);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      transactions = [];
+    }
+  } else {
+    console.log('No saved data found for user, starting fresh');
+    transactions = [];
+  }
+}
+
+function saveUserData() {
+  if (!currentUser) return;
+  
+  const userDataKey = `budgetData_${currentUser.id}`;
+  const data = {
+    transactions,
+    adjustableBudgets,
+    selectedMonth,
+    lastSaved: new Date().toISOString(),
+    userId: currentUser.id
+  };
+  
+  localStorage.setItem(userDataKey, JSON.stringify(data));
+  console.log(`Data saved for user: ${currentUser.name}, ${transactions.length} transactions`);
+}
+
+function mergeUserCategories() {
+  if (!currentUser || !currentUser.customCategories) return;
+  
+  // Reset to default categories
+  subcategories = JSON.parse(JSON.stringify(defaultSubcategories));
+  
+  // Add user's custom categories
+  Object.entries(currentUser.customCategories).forEach(([name, data]) => {
+    if (!subcategories[data.type]) {
+      subcategories[data.type] = [];
+    }
+    
+    // Check if category already exists
+    const existingIndex = subcategories[data.type].findIndex(cat => cat.value === name);
+    if (existingIndex === -1) {
+      subcategories[data.type].push({
+        value: name,
+        text: `✨ ${name}`,
+        budget: data.budget
+      });
+      
+      // Also add to adjustable budgets
+      adjustableBudgets[data.type][name] = data.budget;
+    }
+  });
+  
+  console.log('Merged user categories:', currentUser.customCategories);
+}
+
+// Enhanced form submission with user context
 function handleFormSubmit(e) {
   e.preventDefault();
+  
+  if (!currentUser) {
+    showNotification('Please log in to add transactions', 'error');
+    return;
+  }
   
   // Show loading state
   const submitButton = e.target.querySelector('button[type="submit"]');
@@ -156,25 +251,13 @@ function handleFormSubmit(e) {
     return;
   }
   
-  if (!category) {
-    showNotification('Please select income or expense', 'error');
+  if (!category || !subcategory || !entryDate) {
+    showNotification('Please fill all required fields', 'error');
     resetButton();
     return;
   }
   
-  if (!subcategory) {
-    showNotification('Please select a category', 'error');
-    resetButton();
-    return;
-  }
-  
-  if (!entryDate) {
-    showNotification('Please select a date', 'error');
-    resetButton();
-    return;
-  }
-  
-  // Check if date is too far in the future
+  // Check if date is reasonable
   const today = new Date();
   const selectedDate = new Date(entryDate);
   const futureLimit = new Date();
@@ -186,7 +269,7 @@ function handleFormSubmit(e) {
     return;
   }
   
-  // Simulate processing delay for better UX
+  // Create transaction with user context
   setTimeout(() => {
     const transaction = {
       id: Date.now() + Math.random(),
@@ -196,13 +279,14 @@ function handleFormSubmit(e) {
       category: subcategory,
       entryDate,
       month: entryDate.substring(0, 7),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: currentUser.id
     };
     
     console.log('Adding transaction:', transaction);
     
     transactions.push(transaction);
-    saveData();
+    saveUserData();
     
     // Reset form
     document.getElementById('budgetForm').reset();
@@ -212,12 +296,22 @@ function handleFormSubmit(e) {
     renderMobileView();
     renderTables();
     
+    // Update full transaction list if on transactions page
+    if (currentPage === 'transactions') {
+      renderFullTransactionsList();
+    }
+    
     // Show success feedback
     const typeText = category === 'income' ? 'Income' : 'Expense';
-    showNotification(`${typeText} of $${amount.toFixed(2)} added successfully!`, 'success');
+    showNotification(`${typeText} of ${amount.toFixed(2)} added successfully!`, 'success');
     
     resetButton();
     updateDebugInfo();
+    
+    // Generate AI insights after adding transaction
+    if (typeof generateAIInsights === 'function') {
+      setTimeout(() => generateAIInsights(), 500);
+    }
     
     // Focus back to item input for quick entry
     setTimeout(() => document.getElementById('item').focus(), 100);
@@ -229,6 +323,7 @@ function handleFormSubmit(e) {
   }
 }
 
+// Enhanced month change handler
 function handleMonthChange() {
   selectedMonth = document.getElementById('monthSelector').value;
   document.getElementById('entryDate').value = `${selectedMonth}-01`;
@@ -236,8 +331,19 @@ function handleMonthChange() {
   renderMobileView();
   renderTables();
   updateDebugInfo();
+  
+  // Update full transactions list if on transactions page
+  if (currentPage === 'transactions') {
+    renderFullTransactionsList();
+  }
+  
+  // Save user preference
+  if (currentUser) {
+    saveUserData();
+  }
 }
 
+// Enhanced subcategory update with user categories
 function updateSubcategories() {
   const type = document.getElementById('category').value;
   const subcategorySelect = document.getElementById('subcategory');
@@ -254,21 +360,28 @@ function updateSubcategories() {
   }
 }
 
+// Enhanced display month update
 function updateDisplayedMonth() {
   const [year, month] = selectedMonth.split('-');
   const date = new Date(year, month - 1);
   const monthName = date.toLocaleString(undefined, { month: 'long', year: 'numeric' });
   
   // Update titles
-  document.getElementById('transactionTitle').textContent = `Recent Transactions - ${monthName}`;
-  document.getElementById('expenseTitle').textContent = `${monthName} Expense Breakdown`;
-  document.getElementById('incomeTitle').textContent = `${monthName} Income Sources`;
+  const transactionTitle = document.getElementById('transactionTitle');
+  const expenseTitle = document.getElementById('expenseTitle');
+  const incomeTitle = document.getElementById('incomeTitle');
+  
+  if (transactionTitle) transactionTitle.textContent = `Transactions - ${monthName}`;
+  if (expenseTitle) expenseTitle.textContent = `${monthName} Expense Breakdown`;
+  if (incomeTitle) incomeTitle.textContent = `${monthName} Income Sources`;
 }
 
+// Enhanced transaction filtering
 function getFilteredTransactions() {
   return transactions.filter(t => t.month === selectedMonth);
 }
 
+// Enhanced mobile view rendering
 function renderMobileView() {
   console.log('Rendering mobile view for month:', selectedMonth);
   
@@ -301,51 +414,68 @@ function renderMobileView() {
   const totalSpent = Object.values(expenseSummary).reduce((sum, s) => sum + s.spent, 0);
   const remaining = totalEarned - totalSpent;
   
-  document.getElementById('totalIncomeCard').textContent = `$${totalEarned.toFixed(2)}`;
-  document.getElementById('totalExpenseCard').textContent = `$${totalSpent.toFixed(2)}`;
-  document.getElementById('netBalanceCard').textContent = `$${remaining.toFixed(2)}`;
-  document.getElementById('netBalanceCard').className = `text-xl font-bold ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`;
+  // Update dashboard cards
+  const totalIncomeCard = document.getElementById('totalIncomeCard');
+  const totalExpenseCard = document.getElementById('totalExpenseCard');
+  const netBalanceCard = document.getElementById('netBalanceCard');
   
-  // Render transactions
-  const transactionList = document.getElementById('transactionList');
-  if (filtered.length === 0) {
-    transactionList.innerHTML = '<div class="text-center text-gray-500 py-8">No transactions for this month</div>';
-  } else {
-    const sortedTransactions = [...filtered].sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
-    transactionList.innerHTML = sortedTransactions.map(createTransactionCard).join('');
+  if (totalIncomeCard) totalIncomeCard.textContent = `${totalEarned.toFixed(2)}`;
+  if (totalExpenseCard) totalExpenseCard.textContent = `${totalSpent.toFixed(2)}`;
+  if (netBalanceCard) {
+    netBalanceCard.textContent = `${remaining.toFixed(2)}`;
+    netBalanceCard.className = netBalanceCard.className.replace(/text-\w+-\d+/, remaining >= 0 ? 'text-green-600' : 'text-red-600');
   }
   
-  // Render expense categories
-  const expenseList = document.getElementById('expenseList');
-  expenseList.innerHTML = subcategories.expense.map(cat => {
-    const data = expenseSummary[cat.value] || { spent: 0, budget: adjustableBudgets.expense[cat.value] || cat.budget };
-    return createCategoryCard(cat.text, data, 'expense', data.budget, cat.value);
-  }).join('');
+  // Render transactions in dashboard
+  const transactionList = document.getElementById('transactionList');
+  if (transactionList) {
+    if (filtered.length === 0) {
+      transactionList.innerHTML = '<div class="text-center text-gray-500 py-8">No transactions for this month<br><small>Add your first transaction above!</small></div>';
+    } else {
+      const sortedTransactions = [...filtered].sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
+      transactionList.innerHTML = sortedTransactions.slice(0, 10).map(createTransactionCard).join('');
+    }
+  }
   
-  // Render income categories
+  // Render expense categories (for transactions page)
+  const expenseList = document.getElementById('expenseList');
+  if (expenseList) {
+    expenseList.innerHTML = subcategories.expense.map(cat => {
+      const data = expenseSummary[cat.value] || { spent: 0, budget: adjustableBudgets.expense[cat.value] || cat.budget };
+      return createCategoryCard(cat.text, data, 'expense', data.budget, cat.value);
+    }).join('');
+  }
+  
+  // Render income categories (for transactions page)
   const incomeList = document.getElementById('incomeList');
-  incomeList.innerHTML = subcategories.income.map(src => {
-    const data = incomeSummary[src.value] || { earned: 0, budget: adjustableBudgets.income[src.value] || src.budget };
-    return createCategoryCard(src.text, data, 'income', data.budget, src.value);
-  }).join('');
+  if (incomeList) {
+    incomeList.innerHTML = subcategories.income.map(src => {
+      const data = incomeSummary[src.value] || { earned: 0, budget: adjustableBudgets.income[src.value] || src.budget };
+      return createCategoryCard(src.text, data, 'income', data.budget, src.value);
+    }).join('');
+  }
   
   // Attach budget adjustment listeners
-  document.querySelectorAll('.budget-adjust').forEach(select => {
-    select.addEventListener('change', function() {
-      const type = this.getAttribute('data-type');
-      const category = this.getAttribute('data-category');
-      const newBudget = parseFloat(this.value);
-      if (!isNaN(newBudget)) {
-        adjustableBudgets[type][category] = newBudget;
-        saveData();
-        renderMobileView();
-        renderTables();
-        showNotification('Budget updated', 'success');
-      }
-    });
-  });
+  attachBudgetListeners();
 }
 
+// Full transactions list for transactions page
+function renderFullTransactionsList() {
+  const container = document.getElementById('transactionListFull');
+  if (!container) return;
+  
+  const filtered = getFilteredTransactions();
+  
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="text-center text-gray-500 py-8">No transactions for this month</div>';
+    return;
+  }
+  
+  const sortedTransactions = [...filtered].sort((a, b) => new Date(b.entryDate) - new Date(a.entryDate));
+  container.innerHTML = sortedTransactions.map(createTransactionCard).join('');
+}
+
+// Enhanced transaction card creation
 function createTransactionCard(transaction) {
   const date = new Date(transaction.entryDate).toLocaleDateString(undefined, { 
     month: 'short', 
@@ -357,9 +487,9 @@ function createTransactionCard(transaction) {
   const icon = isIncome ? '💰' : '💸';
   
   return `
-    <div class="transaction-card bg-white rounded-lg p-4 border shadow-sm hover:shadow-md transition-shadow">
+    <div class="transaction-card bg-white rounded-lg p-4 border shadow-sm hover:shadow-md transition-all duration-200">
       <div class="flex justify-between items-center">
-        <div class="flex items-center space-x-3 flex-1">
+        <div class="flex items-center space-x-3 flex-1 min-w-0">
           <span class="text-lg">${icon}</span>
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-900 truncate">${transaction.item}</div>
@@ -367,9 +497,7 @@ function createTransactionCard(transaction) {
           </div>
         </div>
         <div class="text-right flex items-center space-x-2">
-          <div>
-            <div class="font-bold ${amountColor}">$${transaction.amount.toFixed(2)}</div>
-          </div>
+          <div class="font-bold ${amountColor}">${transaction.amount.toFixed(2)}</div>
           <div class="flex flex-col space-y-1">
             <button onclick="editTransaction(${transaction.id})" 
                     class="text-xs text-blue-500 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
@@ -386,6 +514,7 @@ function createTransactionCard(transaction) {
   `;
 }
 
+// Enhanced category card creation
 function createCategoryCard(categoryText, data, type, budget, categoryKey) {
   const isIncome = type === 'income';
   const amount = isIncome ? data.earned : data.spent;
@@ -394,23 +523,24 @@ function createCategoryCard(categoryText, data, type, budget, categoryKey) {
   const amountColor = isIncome ? 'text-green-600' : 'text-red-600';
   
   return `
-    <div class="category-card bg-gray-50 rounded-lg p-4 border">
+    <div class="category-card bg-gray-50 rounded-lg p-4 border hover:shadow-sm transition-shadow">
       <div class="flex justify-between items-center mb-2">
         <div class="font-medium text-gray-900">${categoryText}</div>
-        <div class="font-bold ${amountColor}">$${amount.toFixed(2)}</div>
+        <div class="font-bold ${amountColor}">${amount.toFixed(2)}</div>
       </div>
       <div class="flex justify-between items-center text-sm text-gray-600 mb-2">
-        <span>Budget: $${budget}</span>
+        <span>Budget: ${budget}</span>
         <span class="${remaining >= 0 ? 'text-green-600' : 'text-red-600'}">
-          ${remaining >= 0 ? 'Remaining' : 'Over'}: $${Math.abs(remaining).toFixed(2)}
+          ${remaining >= 0 ? 'Remaining' : 'Over'}: ${Math.abs(remaining).toFixed(2)}
         </span>
       </div>
       <div class="flex justify-between items-center">
         <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3">
-          <div class="h-2 rounded-full ${percentage > 100 ? 'bg-red-500' : (isIncome ? 'bg-green-500' : 'bg-blue-500')}" 
+          <div class="h-2 rounded-full transition-all duration-300 ${percentage > 100 ? 'bg-red-500' : (isIncome ? 'bg-green-500' : 'bg-blue-500')}" 
                style="width: ${Math.min(percentage, 100)}%"></div>
         </div>
-        <select class="budget-adjust text-xs px-2 py-1 border rounded" data-type="${type}" data-category="${categoryKey}">
+        <select class="budget-adjust text-xs px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500" 
+                data-type="${type}" data-category="${categoryKey}">
           ${generateBudgetOptions(budget)}
         </select>
       </div>
@@ -418,52 +548,118 @@ function createCategoryCard(categoryText, data, type, budget, categoryKey) {
   `;
 }
 
+// Budget options generation
 function generateBudgetOptions(currentBudget) {
   const options = [];
-  const budgetValues = [50, 80, 100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000, 1200, 1300, 1500, 2000];
+  const budgetValues = [0, 50, 80, 100, 120, 150, 200, 250, 300, 400, 500, 600, 800, 1000, 1200, 1300, 1500, 2000, 2500, 3000];
   
   budgetValues.forEach(value => {
     const selected = value === currentBudget ? 'selected' : '';
-    options.push(`<option value="${value}" ${selected}>$${value}</option>`);
+    options.push(`<option value="${value}" ${selected}>${value}</option>`);
   });
   
   return options.join('');
 }
 
+// Attach budget adjustment listeners
+function attachBudgetListeners() {
+  document.querySelectorAll('.budget-adjust').forEach(select => {
+    select.removeEventListener('change', handleBudgetChange);
+    select.addEventListener('change', handleBudgetChange);
+  });
+}
+
+function handleBudgetChange(event) {
+  const type = event.target.getAttribute('data-type');
+  const category = event.target.getAttribute('data-category');
+  const newBudget = parseFloat(event.target.value);
+  
+  if (!isNaN(newBudget)) {
+    adjustableBudgets[type][category] = newBudget;
+    
+    // Update user's custom categories if it's a custom category
+    if (currentUser && currentUser.customCategories && currentUser.customCategories[category]) {
+      currentUser.customCategories[category].budget = newBudget;
+      users[currentUser.email] = currentUser;
+      localStorage.setItem('budgetUsers', JSON.stringify(users));
+      localStorage.setItem('budgetCurrentUser', JSON.stringify(currentUser));
+    }
+    
+    saveUserData();
+    renderMobileView();
+    renderTables();
+    
+    // Update budget page if we're on it
+    if (currentPage === 'budgets') {
+      loadBudgetsData();
+    }
+    
+    showNotification('Budget updated successfully', 'success', 2000);
+  }
+}
+
+// Get subcategory text helper
 function getSubcategoryText(value) {
   const allSubcategories = [...subcategories.income, ...subcategories.expense];
   const sub = allSubcategories.find(s => s.value === value);
   return sub ? sub.text : value;
 }
 
+// Enhanced transaction deletion
 function deleteTransaction(id) {
+  if (!currentUser) {
+    showNotification('Please log in to delete transactions', 'error');
+    return;
+  }
+  
   const transaction = transactions.find(t => t.id === id);
   if (!transaction) {
     showNotification('Transaction not found', 'error');
     return;
   }
   
-  const confirmMessage = `Are you sure you want to delete "${transaction.item}" ($${transaction.amount.toFixed(2)})?`;
+  const confirmMessage = `Are you sure you want to delete "${transaction.item}" (${transaction.amount.toFixed(2)})?`;
   
   if (confirm(confirmMessage)) {
     showNotification('Deleting transaction...', 'info');
     
     setTimeout(() => {
       transactions = transactions.filter(t => t.id !== id);
-      saveData();
+      saveUserData();
       renderMobileView();
       renderTables();
+      
+      if (currentPage === 'transactions') {
+        renderFullTransactionsList();
+      }
+      
       updateDebugInfo();
       showNotification('Transaction deleted successfully', 'success');
+      
+      // Regenerate AI insights
+      if (typeof generateAIInsights === 'function') {
+        setTimeout(() => generateAIInsights(), 500);
+      }
     }, 500);
   }
 }
 
+// Enhanced transaction editing
 function editTransaction(id) {
+  if (!currentUser) {
+    showNotification('Please log in to edit transactions', 'error');
+    return;
+  }
+  
   const transaction = transactions.find(t => t.id === id);
   if (!transaction) {
     showNotification('Transaction not found', 'error');
     return;
+  }
+  
+  // Navigate to dashboard if not already there
+  if (currentPage !== 'dashboard') {
+    showDashboardPage('dashboard');
   }
   
   // Pre-fill form
@@ -479,12 +675,17 @@ function editTransaction(id) {
   
   // Remove original transaction
   transactions = transactions.filter(t => t.id !== id);
-  saveData();
+  saveUserData();
   renderMobileView();
   renderTables();
+  
+  if (currentPage === 'transactions') {
+    renderFullTransactionsList();
+  }
+  
   updateDebugInfo();
   
-  showNotification('Transaction loaded for editing. Make changes and save.', 'info');
+  showNotification('Transaction loaded for editing. Make changes and save.', 'info', 3000);
   document.getElementById('item').focus();
   
   // Scroll to form
@@ -494,27 +695,99 @@ function editTransaction(id) {
   });
 }
 
+// Enhanced tab showing with full transaction list update
 function showTab(tabName) {
   // Hide all content
   document.getElementById('content-transactions').classList.add('hidden');
   document.getElementById('content-expenses').classList.add('hidden');
   document.getElementById('content-income').classList.add('hidden');
-  document.getElementById('content-analytics').classList.add('hidden');
   
   // Remove active state from all tabs
-  const tabs = ['transactions', 'expenses', 'income', 'analytics'];
+  const tabs = ['transactions', 'expenses', 'income'];
   tabs.forEach(tab => {
-    document.getElementById(`tab-${tab}`).className = 'flex-1 py-3 px-2 text-center font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent text-xs';
+    const tabElement = document.getElementById(`tab-${tab}`);
+    if (tabElement) {
+      tabElement.className = 'flex-1 py-3 px-4 text-center font-medium text-gray-600 hover:text-gray-900 border-b-2 border-transparent transition-colors';
+    }
   });
   
   // Show selected content and activate tab
   document.getElementById(`content-${tabName}`).classList.remove('hidden');
-  document.getElementById(`tab-${tabName}`).className = 'flex-1 py-3 px-2 text-center font-medium text-blue-600 bg-blue-50 border-b-2 border-blue-600 text-xs';
-  
-  // Update charts when analytics tab is shown
-  if (tabName === 'analytics') {
-    setTimeout(() => updateCharts(), 100);
+  const activeTab = document.getElementById(`tab-${tabName}`);
+  if (activeTab) {
+    activeTab.className = 'flex-1 py-3 px-4 text-center font-medium text-blue-600 bg-blue-50 border-b-2 border-blue-600';
   }
+  
+  // Update transaction list for full transactions tab
+  if (tabName === 'transactions') {
+    renderFullTransactionsList();
+  }
+}
+
+// Receipt upload handler
+function handleReceiptUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const ocrResult = document.getElementById('ocrResult');
+  ocrResult.textContent = 'Processing receipt...';
+  ocrResult.className = 'text-xs mt-2 text-blue-600';
+  
+  // Mock OCR processing (replace with actual OCR integration)
+  setTimeout(() => {
+    // Simulate OCR results
+    const mockResults = [
+      { vendor: 'Walmart', amount: 45.67, category: 'Grocery' },
+      { vendor: 'Shell', amount: 35.20, category: 'Petrol' },
+      { vendor: 'McDonald\'s', amount: 12.99, category: 'Food' },
+      { vendor: 'Home Depot', amount: 89.45, category: 'Home' }
+    ];
+    
+    const result = mockResults[Math.floor(Math.random() * mockResults.length)];
+    
+    // Pre-fill form
+    document.getElementById('item').value = result.vendor;
+    document.getElementById('amount').value = result.amount;
+    document.getElementById('category').value = 'expense';
+    updateSubcategories();
+    setTimeout(() => {
+      document.getElementById('subcategory').value = result.category;
+    }, 100);
+    
+    ocrResult.textContent = `Receipt processed: ${result.vendor} - ${result.amount}`;
+    ocrResult.className = 'text-xs mt-2 text-green-600';
+    
+    showNotification('Receipt processed successfully!', 'success');
+  }, 2000);
+}
+
+// Item input handler for AI suggestions
+function handleItemInput(event) {
+  const input = event.target.value;
+  const suggestion = document.getElementById('aiSuggestion');
+  
+  if (input.length > 2) {
+    // Mock AI category suggestion
+    const suggestions = {
+      'walmart': 'Grocery',
+      'mcdonalds': 'Food',
+      'shell': 'Petrol',
+      'rent': 'Rent',
+      'gym': 'Gym',
+      'phone': 'Mobile'
+    };
+    
+    const lowerInput = input.toLowerCase();
+    for (const [keyword, category] of Object.entries(suggestions)) {
+      if (lowerInput.includes(keyword)) {
+        suggestion.textContent = `💡 Suggested category: ${category}`;
+        suggestion.className = 'text-xs text-blue-500 mt-1';
+        return;
+      }
+    }
+  }
+  
+  suggestion.textContent = '';
 }
 
 // Legacy table rendering for compatibility
@@ -602,6 +875,9 @@ function renderTables() {
       Net Balance: ${remaining.toFixed(2)}
     `;
   }
+  
+  // Reattach budget listeners for legacy tables
+  attachBudgetListeners();
 }
 
 // Analytics and charting functions
@@ -846,7 +1122,7 @@ function createBudgetComparisonChart() {
     ctx.fillStyle = '#374151';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'left';
-    const categoryText = getSubcategoryText(category).replace(/[📱🏠🛒🍕⛽🏡💪✨🛡️]/g, '').trim();
+    const categoryText = getSubcategoryText(category).replace(/[📱🏠🛒🍕⛽🏡💪✨🛡️🎓]/g, '').trim();
     ctx.fillText(categoryText.substring(0, 8), 5, y + barHeight / 2 + 3);
     
     // Values
@@ -867,7 +1143,6 @@ function updateCharts() {
     
     // Update legends and stats
     updateExpenseLegend(expenseData);
-    updateAnalyticsStats();
   } catch (error) {
     console.error('Error updating charts:', error);
   }
@@ -905,100 +1180,125 @@ function updateExpenseLegend(expenseData) {
     }).join('');
 }
 
-function updateAnalyticsStats() {
-  const statsElement = document.getElementById('analyticsStats');
-  if (!statsElement) return;
+// Generate AI Insights
+function generateAIInsights() {
+  const container = document.getElementById('aiInsights');
+  if (!container || !currentUser) return;
   
-  const currentMonth = analyticsData.currentMonth;
-  const totalIncome = Object.values(currentMonth.income).reduce((sum, item) => sum + item.earned, 0);
-  const totalExpense = Object.values(currentMonth.expense).reduce((sum, item) => sum + item.spent, 0);
-  const balance = totalIncome - totalExpense;
+  const filtered = getFilteredTransactions();
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="text-blue-600">Add transactions to get AI insights</div>';
+    return;
+  }
   
-  // Calculate savings rate
-  const savingsRate = totalIncome > 0 ? ((balance / totalIncome) * 100) : 0;
+  const insights = [];
   
-  // Find highest expense category
-  const highestExpense = Object.entries(currentMonth.expense)
-    .sort(([,a], [,b]) => b.spent - a.spent)[0];
+  // Calculate monthly totals
+  const totalIncome = filtered.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = filtered.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const balance = totalIncome - totalExpenses;
+  const savingsRate = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
   
-  // Calculate budget utilization
-  const totalBudget = Object.values(adjustableBudgets.expense).reduce((sum, budget) => sum + budget, 0);
-  const budgetUtilization = totalBudget > 0 ? ((totalExpense / totalBudget) * 100) : 0;
+  // Savings rate insight
+  if (savingsRate > 20) {
+    insights.push(`Excellent! You're saving ${savingsRate.toFixed(1)}% of your income this month.`);
+  } else if (savingsRate > 10) {
+    insights.push(`Good savings rate of ${savingsRate.toFixed(1)}%. Consider increasing to 20%+ for better financial health.`);
+  } else if (savingsRate > 0) {
+    insights.push(`You're saving ${savingsRate.toFixed(1)}% this month. Try to gradually increase your savings rate.`);
+  } else {
+    insights.push(`You're spending more than you earn this month. Consider reviewing your expenses.`);
+  }
   
-  statsElement.innerHTML = `
-    <div class="grid grid-cols-2 gap-4 mb-6">
-      <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-        <div class="text-green-800 text-sm font-medium">Savings Rate</div>
-        <div class="text-2xl font-bold text-green-600">${savingsRate.toFixed(1)}%</div>
-      </div>
-      <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <div class="text-blue-800 text-sm font-medium">Budget Used</div>
-        <div class="text-2xl font-bold text-blue-600">${budgetUtilization.toFixed(1)}%</div>
-      </div>
-    </div>
+  // Find top expense category
+  const expensesByCategory = {};
+  filtered.filter(t => t.type === 'expense').forEach(t => {
+    expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
+  });
+  
+  if (Object.keys(expensesByCategory).length > 0) {
+    const topCategory = Object.entries(expensesByCategory)
+      .sort(([,a], [,b]) => b - a)[0];
     
-    <div class="space-y-3">
-      ${highestExpense ? `
-        <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-          <div class="text-yellow-800 text-sm font-medium">Top Expense Category</div>
-          <div class="font-semibold">${getSubcategoryText(highestExpense[0])} - ${highestExpense[1].spent.toFixed(2)}</div>
-        </div>
-      ` : ''}
-      
-      ${balance < 0 ? `
-        <div class="bg-red-50 p-3 rounded-lg border border-red-200">
-          <div class="text-red-800 text-sm font-medium">⚠️ Budget Alert</div>
-          <div class="font-semibold">You're overspending by ${Math.abs(balance).toFixed(2)} this month</div>
-        </div>
-      ` : balance > totalIncome * 0.3 ? `
-        <div class="bg-green-50 p-3 rounded-lg border border-green-200">
-          <div class="text-green-800 text-sm font-medium">🎉 Great Job!</div>
-          <div class="font-semibold">You're saving ${savingsRate.toFixed(1)}% of your income!</div>
-        </div>
-      ` : ''}
-    </div>
-  `;
+    const percentage = ((topCategory[1] / totalExpenses) * 100).toFixed(1);
+    insights.push(`${getSubcategoryText(topCategory[0])} is your biggest expense (${percentage}% of total spending).`);
+    
+    // Budget comparison
+    const budget = adjustableBudgets.expense[topCategory[0]] || 0;
+    if (topCategory[1] > budget * 1.1) {
+      insights.push(`You're significantly over budget on ${getSubcategoryText(topCategory[0])}. Consider reviewing this category.`);
+    }
+  }
+  
+  // Transaction frequency insight
+  const avgTransactionAmount = totalExpenses / filtered.filter(t => t.type === 'expense').length;
+  if (avgTransactionAmount > 100) {
+    insights.push(`Your average transaction is ${avgTransactionAmount.toFixed(2)}. Consider tracking smaller expenses too.`);
+  }
+  
+  // Goal progress (if user has set goals)
+  if (currentUser.savingsGoal > 0) {
+    const currentYear = new Date().getFullYear();
+    const yearTransactions = transactions.filter(t => new Date(t.entryDate).getFullYear() === currentYear);
+    const yearSavings = yearTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0) -
+                       yearTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const goalProgress = (yearSavings / currentUser.savingsGoal) * 100;
+    
+    insights.push(`You're ${goalProgress.toFixed(1)}% towards your annual savings goal of ${currentUser.savingsGoal}.`);
+  }
+  
+  container.innerHTML = insights.map(insight => 
+    `<div class="bg-white p-3 rounded-lg border border-blue-200 text-sm">${insight}</div>`
+  ).join('');
 }
 
-// Data persistence and utility functions
+// Data persistence and utility functions (Enhanced for user context)
 function saveData() {
-  const data = {
-    transactions,
-    adjustableBudgets,
-    selectedMonth,
-    lastSaved: new Date().toISOString()
-  };
-  
-  localStorage.setItem('budgetTrackerData', JSON.stringify(data));
-  console.log('Data saved to localStorage:', transactions.length, 'transactions');
+  // This function now calls saveUserData for user-specific saving
+  if (currentUser) {
+    saveUserData();
+  } else {
+    // Fallback for non-logged in users (temporary storage)
+    const data = {
+      transactions,
+      adjustableBudgets,
+      selectedMonth,
+      lastSaved: new Date().toISOString()
+    };
+    localStorage.setItem('budgetTrackerData_temp', JSON.stringify(data));
+  }
 }
 
 function loadData() {
-  const savedData = localStorage.getItem('budgetTrackerData');
-  if (savedData) {
-    const data = JSON.parse(savedData);
-    transactions = data.transactions || [];
-    adjustableBudgets = data.adjustableBudgets || adjustableBudgets;
-    selectedMonth = data.selectedMonth || selectedMonth;
-    console.log('Data loaded from localStorage:', transactions.length, 'transactions');
-  } else {
-    console.log('No saved data found, using defaults');
+  // This function is now replaced by loadUserData for logged-in users
+  if (!currentUser) {
+    // Load temporary data for non-logged in users
+    const savedData = localStorage.getItem('budgetTrackerData_temp');
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+        transactions = data.transactions || [];
+        adjustableBudgets = data.adjustableBudgets || adjustableBudgets;
+        selectedMonth = data.selectedMonth || selectedMonth;
+      } catch (error) {
+        console.error('Error loading temporary data:', error);
+      }
+    }
   }
 }
-  
-  
 
+// Enhanced notification system
 function showNotification(message, type = 'info', duration = 3000) {
   // Remove existing notifications
   const existingNotifications = document.querySelectorAll('.notification');
   existingNotifications.forEach(n => n.remove());
   
   const notification = document.createElement('div');
-  notification.className = `notification fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg text-white font-medium z-50 shadow-lg transition-all duration-300 max-w-sm text-center ${
-    type === 'success' ? 'bg-green-500' : 
-    type === 'error' ? 'bg-red-500' : 
-    type === 'warning' ? 'bg-yellow-500' :
-    'bg-blue-500'
+  notification.className = `notification fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl text-white font-medium z-50 shadow-xl transition-all duration-300 max-w-sm text-center backdrop-blur-sm ${
+    type === 'success' ? 'bg-green-500/90' : 
+    type === 'error' ? 'bg-red-500/90' : 
+    type === 'warning' ? 'bg-yellow-500/90' :
+    'bg-blue-500/90'
   }`;
   
   const icons = {
@@ -1017,34 +1317,55 @@ function showNotification(message, type = 'info', duration = 3000) {
   
   document.body.appendChild(notification);
   
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(-50%) translateY(0)';
+  }, 10);
+  
   // Auto remove
   setTimeout(() => {
     if (notification.parentNode) {
-      notification.remove();
+      notification.style.transform = 'translateX(-50%) translateY(-100%)';
+      setTimeout(() => notification.remove(), 300);
     }
   }, duration);
   
   // Manual dismiss on click
   notification.addEventListener('click', () => {
     if (notification.parentNode) {
-      notification.remove();
+      notification.style.transform = 'translateX(-50%) translateY(-100%)';
+      setTimeout(() => notification.remove(), 300);
     }
   });
 }
 
-// Export/Import functions
+// Export/Import functions (Enhanced for user context)
 function exportData() {
+  if (!currentUser) {
+    showNotification('Please log in to export data', 'error');
+    return;
+  }
+  
   const data = {
     transactions,
     adjustableBudgets,
-    exportDate: new Date().toISOString()
+    user: {
+      name: currentUser.name,
+      email: currentUser.email,
+      customCategories: currentUser.customCategories,
+      savingsGoal: currentUser.savingsGoal,
+      incomeTarget: currentUser.incomeTarget,
+      emergencyFund: currentUser.emergencyFund
+    },
+    exportDate: new Date().toISOString(),
+    version: '2.0.0'
   };
   
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `budget-data-${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `budget-data-${currentUser.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1054,6 +1375,11 @@ function exportData() {
 }
 
 function importData(event) {
+  if (!currentUser) {
+    showNotification('Please log in to import data', 'error');
+    return;
+  }
+  
   const file = event.target.files[0];
   if (!file) return;
   
@@ -1062,45 +1388,100 @@ function importData(event) {
     try {
       const data = JSON.parse(e.target.result);
       if (data.transactions && Array.isArray(data.transactions)) {
-        transactions = data.transactions;
-        if (data.adjustableBudgets) {
-          adjustableBudgets = data.adjustableBudgets;
+        // Merge with existing data or replace
+        const shouldMerge = confirm('Do you want to merge with existing data? (Cancel to replace all data)');
+        
+        if (shouldMerge) {
+          // Merge transactions
+          const existingIds = new Set(transactions.map(t => t.id));
+          const newTransactions = data.transactions.filter(t => !existingIds.has(t.id));
+          transactions.push(...newTransactions);
+          showNotification(`Merged ${newTransactions.length} new transactions`, 'success');
+        } else {
+          // Replace all data
+          transactions = data.transactions;
+          showNotification(`Imported ${transactions.length} transactions`, 'success');
         }
-        saveData();
+        
+        // Update budgets if available
+        if (data.adjustableBudgets) {
+          adjustableBudgets = { ...adjustableBudgets, ...data.adjustableBudgets };
+        }
+        
+        // Update user goals if available
+        if (data.user) {
+          if (data.user.customCategories) {
+            currentUser.customCategories = { ...currentUser.customCategories, ...data.user.customCategories };
+          }
+          if (data.user.savingsGoal) currentUser.savingsGoal = data.user.savingsGoal;
+          if (data.user.incomeTarget) currentUser.incomeTarget = data.user.incomeTarget;
+          if (data.user.emergencyFund) currentUser.emergencyFund = data.user.emergencyFund;
+          
+          // Update user storage
+          users[currentUser.email] = currentUser;
+          localStorage.setItem('budgetUsers', JSON.stringify(users));
+          localStorage.setItem('budgetCurrentUser', JSON.stringify(currentUser));
+        }
+        
+        saveUserData();
+        mergeUserCategories();
         renderMobileView();
         renderTables();
         updateDebugInfo();
-        showNotification(`Data imported successfully! Loaded ${transactions.length} transactions`, 'success');
+        
+        if (currentPage === 'transactions') {
+          renderFullTransactionsList();
+        }
       } else {
         showNotification('Invalid data format', 'error');
       }
     } catch (error) {
       console.error('Import error:', error);
-      showNotification('Error importing data', 'error');
+      showNotification('Error importing data: Invalid file format', 'error');
     }
   };
   reader.readAsText(file);
+  
+  // Reset file input
+  event.target.value = '';
 }
 
 function clearAllData() {
-  if (confirm('Are you sure you want to clear ALL data? This cannot be undone!')) {
-    if (confirm('This will delete all transactions and reset budgets. Are you absolutely sure?')) {
+  if (!currentUser) {
+    showNotification('Please log in to clear data', 'error');
+    return;
+  }
+  
+  if (confirm('Are you sure you want to clear ALL transaction data? This cannot be undone!')) {
+    if (confirm('This will delete all your transactions but keep your account and settings. Continue?')) {
       transactions = [];
+      
+      // Reset budgets to defaults but keep custom categories
       adjustableBudgets = {
-        income: { UCO: 1000, GONG: 1300 },
+        income: { UCO: 1000, GONG: 1300, Freelance: 500, Investment: 200 },
         expense: {
           Rent: 300, Grocery: 200, Food: 100, Petrol: 120, Home: 250,
           Gym: 80, Mobile: 60, Extra: 50, Insurance: 150, Tuition: 1000,
         }
       };
       
-      // Clear memory storage
-      window.budgetData = null;
+      // Re-add custom category budgets
+      if (currentUser.customCategories) {
+        Object.entries(currentUser.customCategories).forEach(([name, data]) => {
+          adjustableBudgets[data.type][name] = data.budget;
+        });
+      }
       
+      saveUserData();
       renderMobileView();
       renderTables();
       updateDebugInfo();
-      showNotification('All data cleared successfully', 'success');
+      
+      if (currentPage === 'transactions') {
+        renderFullTransactionsList();
+      }
+      
+      showNotification('All transaction data cleared successfully', 'success');
     }
   }
 }
@@ -1113,11 +1494,18 @@ function getDataStats() {
   const newestTransaction = transactions.length > 0 ? 
     new Date(Math.max(...transactions.map(t => new Date(t.entryDate)))).toLocaleDateString() : 'None';
   
+  const currentMonthTransactions = getFilteredTransactions().length;
+  const customCategoriesCount = currentUser?.customCategories ? Object.keys(currentUser.customCategories).length : 0;
+  
   return {
     totalTransactions,
     totalMonths,
     oldestTransaction,
-    newestTransaction
+    newestTransaction,
+    currentMonthTransactions,
+    customCategoriesCount,
+    userName: currentUser?.name || 'Guest',
+    userEmail: currentUser?.email || 'N/A'
   };
 }
 
@@ -1129,20 +1517,37 @@ function updateDebugInfo() {
   const filteredCount = getFilteredTransactions().length;
   
   debugElement.innerHTML = `
-    <div>Total Transactions: ${stats.totalTransactions}</div>
-    <div>This Month: ${filteredCount}</div>
-    <div>Total Months: ${stats.totalMonths}</div>
-    <div>Date Range: ${stats.oldestTransaction} to ${stats.newestTransaction}</div>
-    <div>Last Updated: ${new Date().toLocaleTimeString()}</div>
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div>User: ${stats.userName}</div>
+      <div>Email: ${stats.userEmail}</div>
+      <div>Total Transactions: ${stats.totalTransactions}</div>
+      <div>This Month: ${filteredCount}</div>
+      <div>Total Months: ${stats.totalMonths}</div>
+      <div>Custom Categories: ${stats.customCategoriesCount}</div>
+      <div>Date Range: ${stats.oldestTransaction}</div>
+      <div>to ${stats.newestTransaction}</div>
+      <div>Last Updated: ${new Date().toLocaleTimeString()}</div>
+      <div>Data Loaded: ${userDataLoaded ? 'Yes' : 'No'}</div>
+    </div>
   `;
 }
 
 function showDataStats() {
   const stats = getDataStats();
-  alert(`Data Statistics:\n\nTotal Transactions: ${stats.totalTransactions}\nMonths with Data: ${stats.totalMonths}\nOldest Entry: ${stats.oldestTransaction}\nNewest Entry: ${stats.newestTransaction}\nCurrent Month: ${selectedMonth}\nFiltered Count: ${getFilteredTransactions().length}`);
+  const message = `📊 Data Statistics for ${stats.userName}
+
+📈 Total Transactions: ${stats.totalTransactions}
+📅 Months with Data: ${stats.totalMonths}  
+📍 Current Month: ${getFilteredTransactions().length} transactions
+🏷️ Custom Categories: ${stats.customCategoriesCount}
+📆 Date Range: ${stats.oldestTransaction} to ${stats.newestTransaction}
+👤 Account: ${stats.userEmail}
+💾 Data Status: ${userDataLoaded ? 'Loaded' : 'Not Loaded'}`;
+  
+  alert(message);
 }
 
-// Make functions globally available
+// Make enhanced functions globally available
 window.showTab = showTab;
 window.deleteTransaction = deleteTransaction;
 window.editTransaction = editTransaction;
@@ -1151,3 +1556,5 @@ window.importData = importData;
 window.clearAllData = clearAllData;
 window.getDataStats = getDataStats;
 window.showDataStats = showDataStats;
+window.generateAIInsights = generateAIInsights;
+window.initializeBudgetTracker = initializeBudgetTracker;

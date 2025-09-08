@@ -1,118 +1,132 @@
-# Monthly Budget Analyzer
+# 💰 Monthly Budget Analyzer  
 
-A smart, AI-powered personal finance management application that helps you track expenses, analyze spending patterns, and make informed financial decisions.
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Tech](https://img.shields.io/badge/Tech-FastAPI%20%7C%20PyTorch%20%7C%20Tailwind-blue)]()
+[![Deployment](https://img.shields.io/badge/Deployed%20on-Vercel-black)](https://vercel.com)
+[![LinkedIn](https://img.shields.io/badge/Showcase-LinkedIn-blue?logo=linkedin)](https://lnkd.in/dEi6nSmv)
 
-## ✨ Features
+A **smart, AI-powered personal finance management application** that helps you track expenses, analyze spending patterns, and make informed financial decisions.  
 
-### 📊 Core Functionality
-- **Transaction Management**: Add, edit, and categorize income and expenses
-- **Visual Analytics**: Interactive charts and graphs for spending visualization
-- **Budget Tracking**: Set and monitor budgets for different categories
-- **Monthly Overview**: Comprehensive financial summaries by month
+![Dashboard Screenshot](assets/demo.png) <!-- Replace with your own screenshot -->
 
-### 🤖 AI-Powered Features
-- **Smart Categorization**: AI suggests categories based on transaction descriptions
-- **Receipt Processing**: Take photos of receipts for automatic data extraction
-- **Spending Insights**: AI-generated analysis of your financial patterns
-- **Pattern Learning**: System learns from your categorization preferences
+---
 
-### 📱 User Experience
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
-- **Intuitive Interface**: Clean, modern design with easy navigation
-- **Real-time Updates**: Instant feedback and live calculations
-- **Data Persistence**: Local storage ensures your data is saved
+## ✨ Highlights  
 
-## 🚀 Getting Started
+- 🚀 Developed a **smart, AI-powered personal finance application** with seamless UX.  
+- 🎨 Built the **frontend** using **HTML, Tailwind CSS, and Vanilla JavaScript**, featuring a responsive UI and interactive **Chart.js** dashboards.  
+- 🧠 Engineered an **AI backend** with **FastAPI + PyTorch/Transformers**, integrating multiple intelligent models:  
+  - **NLP models** for expense categorization & adaptive pattern learning.  
+  - **OCR pipeline** using **Tesseract + OpenCV** for automated receipt scanning & text extraction.  
+  - **Time-series forecasting** with **Prophet** and **Statsmodels** to predict monthly spending trends.  
+  - **Anomaly detection** via **PyOD** and statistical methods to flag unusual expenses.  
+- 🔄 Designed **adaptive learning pipelines** to improve categorization suggestions continuously.  
+- 📊 Delivered **AI-driven dashboards** showing savings rates, category breakdowns, predictive alerts, and budget utilization.  
+- ☁️ **Deployed on Vercel**, enabling scalability, cross-device accessibility, and smooth **CI/CD workflow**.  
 
-### Prerequisites
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- No server setup required for basic functionality
+---
 
-### Installation
+## 📊 Features  
+
+### Core Functionality  
+- **Transaction Management** – Add, edit, and categorize income & expenses  
+- **Visual Analytics** – Interactive charts and graphs for spending visualization  
+- **Budget Tracking** – Set and monitor budgets for different categories  
+- **Monthly Overview** – Comprehensive financial summaries by month  
+
+### AI-Powered Features  
+- **Smart Categorization** – AI suggests categories based on transaction descriptions  
+- **Receipt Processing** – Upload or capture receipts for automatic data extraction  
+- **Spending Insights** – AI-generated analysis of your financial patterns  
+- **Forecasting & Anomaly Detection** – Predictive insights on future spending and unusual expense alerts  
+- **Adaptive Learning** – Improves accuracy from user feedback  
+
+---
+
+## 🛠️ Tech Stack  
+
+### Frontend  
+- **HTML5**, **Tailwind CSS**, **Vanilla JavaScript**  
+- **Chart.js** – Interactive data visualization  
+
+### Backend (AI Services)  
+- **FastAPI** – Python backend framework  
+- **PyTorch / Transformers** – NLP & AI models  
+- **Tesseract + OpenCV** – OCR for receipt scanning  
+- **Prophet + Statsmodels** – Time-series forecasting  
+- **PyOD** – Anomaly detection  
+
+### Infrastructure  
+- **Vercel** – Deployment & hosting  
+- **LocalStorage / JSON** – Data persistence & portability  
+
+---
+
+## 🚀 Getting Started  
+
+### Prerequisites  
+- Modern web browser (Chrome, Firefox, Safari, Edge)  
+- Python 3.x (for backend AI features)  
+
+### Installation  
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/monthly-budget-analyzer.git
+   git clone https://github.com/sandhya8109/monthly-budget-analyzer.git
    cd monthly-budget-analyzer
-   ```
+2. **Frontend Setup** 
+# Simply open index.html in your browser
+open index.html
+# or serve locally
+python -m http.server 8080
+3.**Backend Setup (Optional - for enhanced AI features)**
+cd budget-ai-backend
 
-2. **Frontend Setup**
-   ```bash
-   # Simply open index.html in your browser
-   open index.html
-   # or serve locally
-   python -m http.server 8080
-   ```
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate   # On Windows:.\venv\Scripts\activate
+pip install -r requirements.txt
 
-3. **Backend Setup (Optional - for enhanced AI features)**
-   ```bash
-   # Navigate to backend directory
-   cd budget-ai-backend
-   
-   # Create virtual environment
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   .\.venv\Scripts\Activate.ps1
-   # Install dependencies
-   pip install -r requirements.txt
-   
-   # Start the FastAPI server
-   python main.py
-   # Server will run on http://0.0.0:8000
-   ```
+# Start the FastAPI server
+python main.py
+# Server will run on http://0.0.0.0:8000
+Start using
 
-4. **Start using**
-   - Open your browser to `index.html` or `http://localhost:8080`
-   - Backend API will be available at `http://localhost:8000` (if running)
-   - Begin adding transactions and explore AI features
+4. Open your browser to index.html or http://localhost:8080
 
-## 📖 Usage Guide
+Backend API will be available at http://localhost:8000 (if running)
 
-### Adding Transactions
-1. Fill in the transaction details (item, amount, date)
-2. Select transaction type (income/expense)
-3. Choose or let AI suggest a category
-4. Upload receipt (optional) or use camera feature
-5. Click "Add Entry"
+Begin adding transactions and explore AI features
+📖 Usage Guide
+Adding Transactions
 
-### AI Features
-- **Smart Suggestions**: Type transaction descriptions to get AI category suggestions
-- **Receipt Scanning**: Use "Take Photo of Receipt" for automatic data extraction
-- **Analytics**: View AI-generated insights in the Charts tab
+Fill in the transaction details (item, amount, date)
 
-### Viewing Analytics
-- Switch to the "Charts" tab to see visual representations
-- Review AI insights for spending patterns and recommendations
-- Monitor budget utilization and savings rates
+Select transaction type (income/expense)
 
-## 🛠️ Technology Stack
+Choose or let AI suggest a category
 
-### Frontend
-- **HTML5** - Semantic structure and modern web standards
-- **CSS3 & Tailwind** - Responsive design and utility-first styling
-- **Vanilla JavaScript** - Core application logic and DOM manipulation
-- **Chart.js** - Interactive charts and data visualization
+Upload receipt (optional) or use camera feature
 
-### Backend (Optional)
-- **FastAPI** - Modern Python web framework for AI services
-- **Python 3.x** - Backend runtime environment
-- **Uvicorn** - ASGI server for FastAPI applications
-- **AI Libraries** - OCR processing and pattern recognition
+Click "Add Entry"
 
-### AI Integration
-- **Pattern Recognition** - Local categorization algorithms
-- **OCR Processing** - Receipt text extraction via backend API
-- **Machine Learning** - User behavior learning and adaptation
-- **FastAPI Backend** - AI service integration at http://localhost:8000
+AI Features
 
-### Data Storage
-- **LocalStorage** - Client-side data persistence
-- **JSON Format** - Structured data management
-- **Export/Import** - Data portability features
+Smart Suggestions – Type transaction descriptions to get AI category suggestions
 
-## 🏗️ Architecture
+Receipt Scanning – Use "Take Photo of Receipt" for automatic data extraction
 
-```
+Analytics – View AI-generated insights in the Charts tab
+
+Viewing Analytics
+
+Switch to the "Charts" tab to see visual representations
+
+Review AI insights for spending patterns and recommendations
+
+Monitor budget utilization and savings rates
+
+🏗️ Architecture
 monthly-budget-analyzer/
 ├── .venv/                   # Python virtual environment
 ├── assets/                  # Static assets and resources
@@ -130,103 +144,72 @@ monthly-budget-analyzer/
 ├── index.html              # Main application interface
 ├── README.md               # Project documentation
 └── requirements.txt        # Python dependencies
-```
 
-## 🔧 Configuration
+🔧 Configuration
+AI Backend (Optional)
 
-### AI Backend (Optional)
 The app works offline but can connect to an AI backend for enhanced features:
 
-```javascript
 // Configure AI backend URL in ai-integration.js
 const API_BASE_URL = 'http://localhost:8000/api';
-```
 
-### Customization
-- Modify categories in `app.js`
-- Adjust AI patterns in `ai-integration.js`
-- Customize styling in CSS files
-- Configure chart options in `charts.js`
+Customization
 
-## 📊 AI Features Deep Dive
+Modify categories in app.js
 
-### Smart Categorization
-- **Pattern Matching**: Recognizes common merchant names and keywords
-- **User Learning**: Adapts to your categorization preferences
-- **Confidence Scoring**: Shows how certain the AI is about suggestions
-- **Manual Override**: Easy to accept, reject, or modify suggestions
+Adjust AI patterns in ai-integration.js
 
-### Receipt Processing
-- **Camera Integration**: Direct photo capture from device camera
-- **OCR Extraction**: Automatic text recognition from receipt images
-- **Data Parsing**: Intelligent extraction of amount, date, and vendor
-- **Form Auto-fill**: Seamless integration with transaction form
+Customize styling in CSS files
 
-### Analytics & Insights
-- **Spending Patterns**: Identifies trends and unusual spending
-- **Budget Alerts**: Proactive warnings about budget overruns
-- **Category Analysis**: Detailed breakdown by spending categories
-- **Savings Tracking**: Monitors savings rate and financial health
+Configure chart options in charts.js
 
-## 🤝 Contributing
+🔗 Project Showcase
 
-We welcome contributions! Here's how to get started:
+Check out the detailed write-up and demo on LinkedIn:
+👉 View on LinkedIn
 
-1. **Fork the repository**
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-3. **Commit your changes**
-   ```bash
-   git commit -m 'Add amazing feature'
-   ```
-4. **Push to the branch**
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-5. **Open a Pull Request**
+🤝 Contributing
 
-### Development Guidelines
-- Follow existing code style and conventions
-- Add comments for complex logic
-- Test features across different browsers
-- Update documentation for new features
+We welcome contributions!
 
-## 📝 License
+Fork the repository
+
+Create a feature branch
+
+git checkout -b feature/amazing-feature
 
 
-## 🙏 Acknowledgments
+Commit your changes
 
-- **Chart.js** - Beautiful charts and graphs
-- **Tailwind CSS** - Utility-first CSS framework
-- **OpenAI API** - AI-powered categorization (optional backend)
-- **Contributors** - Thanks to all who have contributed to this project
+git commit -m 'Add amazing feature'
 
-## 📞 Support & Contact
 
-- **Issues**: [GitHub Issues](https://github.com/sandhya8109/monthly-budget-analyzer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/sandhya8109/monthly-budget-analyzer/discussions)
-- **Email**: sandyrimal07@example.com
+Push to the branch
 
-## 🔮 Roadmap
+git push origin feature/amazing-feature
 
-### Upcoming Features
-- [ ] Bank account integration
-- [ ] Multi-currency support
-- [ ] Advanced AI insights
-- [ ] Mobile app development
-- [ ] Cloud synchronization
-- [ ] Collaborative budgeting
-- [ ] Financial goal tracking
 
-### Version History
-- **v1.2.0** - AI integration and receipt scanning
-- **v1.1.0** - Enhanced analytics and charts
-- **v1.0.0** - Initial release with core features
+Open a Pull Request
 
----
+📝 License
 
-**Made with ❤️ for better financial management**
+This project is licensed under the MIT License – see the LICENSE
+ file for details.
 
-*Star ⭐ this repository if it helps you manage your finances better!*
+🙏 Acknowledgments
+
+Chart.js – Beautiful charts and graphs
+
+Tailwind CSS – Utility-first CSS framework
+
+OpenAI API – AI-powered categorization (optional backend)
+
+Contributors – Thanks to all who have contributed
+
+📞 Support & Contact
+
+Issues: GitHub Issues
+
+Discussions: GitHub Discussions
+
+Email: sandyrimal07@example.com
