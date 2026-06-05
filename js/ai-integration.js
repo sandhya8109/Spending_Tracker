@@ -102,16 +102,15 @@ const GroqChat = {
     if (sendBtn) sendBtn.disabled = true;
     if (inputEl) inputEl.disabled = true;
 
-    // Show user message
+    // Show user message (addMessage already pushes to history)
     this.addMessage('user', userMessage);
-    this.history.push({ role: 'user', content: userMessage }); // ensure in history for send
 
     // Show typing
     const typingEl = this.renderTyping();
 
     try {
       const ctx = this.getFinancialContext();
-      const resp = await fetch('/api/chat', {
+      const resp = await fetch('http://localhost:8000/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

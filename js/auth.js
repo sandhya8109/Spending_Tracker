@@ -367,7 +367,29 @@ function initializeAuth() {
   setupAuthEventListeners();
 }
 
-document.addEventListener('DOMContentLoaded', initializeAuth);
+// ── Dark mode ─────────────────────────────────────────────────────────────────
+
+function applyDarkMode(dark) {
+  const html = document.documentElement;
+  if (dark) {
+    html.classList.add('dark');
+  } else {
+    html.classList.remove('dark');
+  }
+  const btn = document.getElementById('darkModeBtn');
+  if (btn) btn.textContent = dark ? '☀️' : '🌙';
+  localStorage.setItem('darkMode', dark ? '1' : '0');
+}
+
+function toggleDarkMode() {
+  applyDarkMode(!document.documentElement.classList.contains('dark'));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeAuth();
+  // Restore dark mode preference
+  applyDarkMode(localStorage.getItem('darkMode') === '1');
+});
 
 // ── Exports to window ─────────────────────────────────────────────────────────
 
@@ -385,6 +407,7 @@ window.toggleSidebar = toggleSidebar;
 window.logout = logout;
 window.showAuthError = showAuthError;
 window.showAuthSuccess = showAuthSuccess;
+window.toggleDarkMode = toggleDarkMode;
 window.populateMonthSelector = populateMonthSelector;
 window.initializeAuth = initializeAuth;
 window.currentUser = currentUser;  // getter via closure — reassigned on login
