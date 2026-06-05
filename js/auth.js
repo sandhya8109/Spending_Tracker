@@ -1,511 +1,391 @@
-// Authentication and User Management System
+// Smart Budget Tracker - Authentication System
+// SHA-256 password hashing via browser crypto.subtle
 
-// Global variables for user management
 let users = {};
 let currentUser = null;
 let currentPage = 'dashboard';
 
-// Hash password using browser-native SHA-256
+// ── Password hashing ──────────────────────────────────────────────────────────
+
 async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode('sbt_v1_' + password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  const text = 'sbt_v1_' + password;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function isHashed(str) {
-    return typeof str === 'string' && /^[a-f0-9]{64}$/.test(str);
+  return /^[a-f0-9]{64}$/.test(str);
 }
 
-// Initialize authentication system
-function initializeAuth() {
-  console.log('Initializing authentication system...');
-  
-  // Load existing users from localStorage
-  loadUsersFromStorage();
-  
-  // Check for existing user session
-  checkExistingSession();
-  
-  // Setup form event listeners
-  setupAuthEventListeners();
-  
-  console.log('Authentication system initialized');
-}
+// ── Storage helpers ───────────────────────────────────────────────────────────
 
-// Load users from localStorage
 function loadUsersFromStorage() {
   try {
-    const savedUsers = localStorage.getItem('budgetUsers');
-    if (savedUsers) {
-      users = JSON.parse(savedUsers);
-      console.log(`Loaded ${Object.keys(users).length} existing users`);
-    }
-  } catch (error) {
-    console.error('Error loading users from storage:', error);
+    const raw = localStorage.getItem('budgetUsers');
+    users = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn('Failed to load users:', e);
     users = {};
   }
 }
 
-// Save users to localStorage
 function saveUsersToStorage() {
   try {
     localStorage.setItem('budgetUsers', JSON.stringify(users));
-    console.log('Users saved to storage');
-  } catch (error) {
-    console.error('Error saving users to storage:', error);
+  } catch (e) {
+    console.error('Failed to save users:', e);
   }
 }
 
-// Check for existing user session
+// ── Session ───────────────────────────────────────────────────────────────────
+
 function checkExistingSession() {
   try {
-    const savedCurrentUser = localStorage.getItem('budgetCurrentUser');
-    if (savedCurrentUser) {
-      currentUser = JSON.parse(savedCurrentUser);
-      console.log('Found existing session for:', currentUser.name);
-      showDashboard();
-    } else {
-      console.log('No existing session found, showing auth screen');
-      showAuthScreen();
-    }
-  } catch (error) {
-    console.error('Error checking existing session:', error);
-    showAuthScreen();
-  }
-}
-
-// Setup authentication event listeners
-function setupAuthEventListeners() {
-  // Login form
-  const loginForm = document.getElementById('loginFormElement');
-  if (loginForm) {
-    loginForm.addEventListener('submit', handleLogin);
-  }
-  
-  // Signup form
-  const signupForm = document.getElementById('signupFormElement');
-  if (signupForm) {
-    signupForm.addEventListener('submit', handleSignup);
-  }
-  
-  console.log('Auth event listeners setup complete');
-}
-
-// Show/hide form functions
-function showSignupForm() {
-  console.log('Switching to signup form');
-  document.getElementById('loginForm').classList.add('hidden');
-  document.getElementById('signupForm').classList.remove('hidden');
-}
-
-function showLoginForm() {
-  console.log('Switching to login form');
-  document.getElementById('signupForm').classList.add('hidden');
-  document.getElementById('loginForm').classList.remove('hidden');
-}
-
-// Handle login form submission
-function handleLogin(event) {
-  event.preventDefault();
-  
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword').value;
-  
-  console.log('Attempting login for:', email);
-  
-  // Show loading state
-  const submitButton = event.target.querySelector('button[type="submit"]');
-  const originalText = submitButton.textContent;
-  submitButton.textContent = 'Signing In...';
-  submitButton.disabled = true;
-  
-  // Hash then validate
-  hashPassword(password).then(async (hashedInput) => {
-    if (!email || !password) {
-      showAuthError('Please fill in all fields');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-
-    if (!users[email]) {
-      showAuthError('Account not found. Please check your email or sign up.');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-
-    const stored = users[email].password;
-    let passwordMatch = false;
-
-    if (isHashed(stored)) {
-      // Normal path: compare hashes
-      passwordMatch = stored === hashedInput;
-    } else {
-      // Migration path: stored password is still plaintext
-      passwordMatch = stored === password;
-      if (passwordMatch) {
-        // Migrate to hashed
-        users[email].password = hashedInput;
-        saveUsersToStorage();
+    const saved = localStorage.getItem('budgetCurrentUser');
+    if (saved) {
+      const user = JSON.parse(saved);
+      if (user && user.email && users[user.email]) {
+        currentUser = users[user.email];
+        showDashboard();
+        return;
       }
     }
-
-    if (!passwordMatch) {
-      showAuthError('Incorrect password. Please try again.');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-
-    currentUser = users[email];
-    currentUser.lastLogin = new Date().toISOString();
-    localStorage.setItem('budgetCurrentUser', JSON.stringify(currentUser));
-    users[email] = currentUser;
-    saveUsersToStorage();
-
-    showAuthSuccess(`Welcome back, ${currentUser.name}!`);
-    setTimeout(() => showDashboard(), 1500);
-
-  }).catch(() => {
-    showAuthError('Login failed. Please try again.');
-    resetSubmitButton(submitButton, originalText);
-  });
+  } catch (e) {
+    console.warn('Session check failed:', e);
+  }
+  showAuthScreen();
 }
 
-// Handle signup form submission
-function handleSignup(event) {
-  event.preventDefault();
-  
+// ── Event listeners ───────────────────────────────────────────────────────────
+
+function setupAuthEventListeners() {
+  const loginEl = document.getElementById('loginFormElement');
+  if (loginEl) loginEl.addEventListener('submit', handleLogin);
+
+  const signupEl = document.getElementById('signupFormElement');
+  if (signupEl) signupEl.addEventListener('submit', handleSignup);
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!email || !password) {
+    showAuthError('login', 'Please fill in all fields.');
+    return;
+  }
+
+  const user = users[email];
+  if (!user) {
+    showAuthError('login', 'No account found with that email. Please sign up.');
+    return;
+  }
+
+  // Compare — support plaintext migration
+  let match = false;
+  if (isHashed(user.password)) {
+    const hashed = await hashPassword(password);
+    match = hashed === user.password;
+  } else {
+    // plaintext migration path
+    if (password === user.password) {
+      match = true;
+      // Upgrade to hashed
+      user.password = await hashPassword(password);
+      users[email] = user;
+      saveUsersToStorage();
+    }
+  }
+
+  if (!match) {
+    showAuthError('login', 'Incorrect password. Please try again.');
+    return;
+  }
+
+  currentUser = user;
+  localStorage.setItem('budgetCurrentUser', JSON.stringify({ email: user.email, name: user.name }));
+  showAuthSuccess('login', 'Welcome back, ' + user.name + '!');
+  setTimeout(() => showDashboard(), 500);
+}
+
+// ── Signup ────────────────────────────────────────────────────────────────────
+
+async function handleSignup(e) {
+  e.preventDefault();
   const name = document.getElementById('signupName').value.trim();
   const email = document.getElementById('signupEmail').value.trim().toLowerCase();
   const password = document.getElementById('signupPassword').value;
-  const income = parseFloat(document.getElementById('signupIncome').value) || 0;
-  
-  console.log('Attempting signup for:', email);
-  
-  // Show loading state
-  const submitButton = event.target.querySelector('button[type="submit"]');
-  const originalText = submitButton.textContent;
-  submitButton.textContent = 'Creating Account...';
-  submitButton.disabled = true;
-  
-  // Validate first, then hash
-  if (!name || !email || !password) {
-    showAuthError('Please fill in all required fields');
-    resetSubmitButton(submitButton, originalText);
-    return;
-  }
+  const incomeVal = document.getElementById('signupIncome').value;
+
   if (name.length < 2) {
-    showAuthError('Name must be at least 2 characters long');
-    resetSubmitButton(submitButton, originalText);
+    showAuthError('signup', 'Name must be at least 2 characters.');
     return;
   }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    showAuthError('Please enter a valid email address');
-    resetSubmitButton(submitButton, originalText);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showAuthError('signup', 'Please enter a valid email address.');
     return;
   }
   if (password.length < 6) {
-    showAuthError('Password must be at least 6 characters long');
-    resetSubmitButton(submitButton, originalText);
+    showAuthError('signup', 'Password must be at least 6 characters.');
     return;
   }
   if (users[email]) {
-    showAuthError('An account with this email already exists. Please login instead.');
-    resetSubmitButton(submitButton, originalText);
-    setTimeout(() => {
-      showLoginForm();
-      document.getElementById('loginEmail').value = email;
-    }, 2000);
-    return;
-  }
-  if (income < 0 || income > 1000000) {
-    showAuthError('Please enter a valid income amount');
-    resetSubmitButton(submitButton, originalText);
+    showAuthError('signup', 'An account with that email already exists. Please sign in.');
     return;
   }
 
-  hashPassword(password).then((hashedPw) => {
-    const newUser = {
-      id: Date.now() + Math.random(),
-      name: name,
-      email: email,
-      password: hashedPw,
-      incomeTarget: income,
-      savingsGoal: income * 12 * 0.2,
-      emergencyFund: income * 6,
-      customCategories: {},
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    };
+  const hashed = await hashPassword(password);
+  const newUser = {
+    name,
+    email,
+    password: hashed,
+    income: parseFloat(incomeVal) || 0,
+    createdAt: new Date().toISOString(),
+    categories: { income: [], expense: [] },
+    goals: { savingsGoal: 0, incomeTarget: 0, emergencyFund: 0 },
+    transactions: [],
+    adjustableBudgets: {}
+  };
 
-    users[email] = newUser;
-    currentUser = newUser;
-    saveUsersToStorage();
-    localStorage.setItem('budgetCurrentUser', JSON.stringify(currentUser));
+  users[email] = newUser;
+  saveUsersToStorage();
 
-    showAuthSuccess(`Account created successfully! Welcome, ${currentUser.name}!`);
-    setTimeout(() => showDashboard(), 2000);
-
-  }).catch(() => {
-    showAuthError('Signup failed. Please try again.');
-    resetSubmitButton(submitButton, originalText);
-  });
+  currentUser = newUser;
+  localStorage.setItem('budgetCurrentUser', JSON.stringify({ email, name }));
+  showAuthSuccess('signup', 'Account created! Welcome, ' + name + '!');
+  setTimeout(() => showDashboard(), 600);
 }
 
-// Reset submit button state
-function resetSubmitButton(button, originalText) {
-  button.textContent = originalText;
-  button.disabled = false;
-}
+// ── Screen management ─────────────────────────────────────────────────────────
 
-// Show authentication screens
 function showAuthScreen() {
-  document.getElementById('authScreen').classList.remove('hidden');
-  document.getElementById('dashboardScreen').classList.add('hidden');
-
-  // Hide AI chat button and panel
+  const authEl = document.getElementById('authScreen');
+  const dashEl = document.getElementById('dashboardScreen');
   const chatBtn = document.getElementById('chatToggleBtn');
-  if (chatBtn) chatBtn.classList.add('hidden');
   const chatPanel = document.getElementById('aiChatPanel');
+
+  if (authEl) authEl.classList.remove('hidden');
+  if (dashEl) dashEl.classList.add('hidden');
+  if (chatBtn) chatBtn.classList.add('hidden');
   if (chatPanel) chatPanel.classList.add('hidden');
-  
-  // Clear any existing error messages
-  clearAuthMessages();
-  
+
   // Reset forms
   const loginForm = document.getElementById('loginFormElement');
   const signupForm = document.getElementById('signupFormElement');
   if (loginForm) loginForm.reset();
   if (signupForm) signupForm.reset();
-  
-  // Show login form by default
-  showLoginForm();
-  
-  // Focus on email field
+
+  // Hide error/success messages
+  ['loginError', 'loginSuccess', 'signupError', 'signupSuccess'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+
+  // Focus email
   setTimeout(() => {
-    const emailField = document.getElementById('loginEmail');
-    if (emailField) emailField.focus();
+    const emailInput = document.getElementById('loginEmail');
+    if (emailInput) emailInput.focus();
   }, 100);
 }
 
 function showDashboard() {
-  if (!currentUser) {
-    showAuthScreen();
-    return;
-  }
-
-  document.getElementById('authScreen').classList.add('hidden');
-  document.getElementById('dashboardScreen').classList.remove('hidden');
-
-  // Show AI chat button
+  const authEl = document.getElementById('authScreen');
+  const dashEl = document.getElementById('dashboardScreen');
   const chatBtn = document.getElementById('chatToggleBtn');
-  if (chatBtn) chatBtn.classList.remove('hidden');
-  
-  // Update welcome message
-  const welcomeUser = document.getElementById('welcomeUser');
-  if (welcomeUser) {
-    welcomeUser.textContent = `Welcome back, ${currentUser.name}!`;
+
+  if (authEl) authEl.classList.add('hidden');
+  if (dashEl) dashEl.classList.remove('hidden');
+
+  // Show chat button (flex so the icon centers)
+  if (chatBtn) {
+    chatBtn.classList.remove('hidden');
+    chatBtn.style.display = 'flex';
   }
-  
-  // Initialize budget tracker with user context
+
+  // Update welcome text
+  const welcomeEl = document.getElementById('welcomeUser');
+  if (welcomeEl && currentUser) {
+    welcomeEl.textContent = '👤 ' + (currentUser.name || currentUser.email);
+  }
+
+  // Populate month selector
+  populateMonthSelector();
+
+  // Initialize budget tracker after brief delay
   setTimeout(() => {
     if (typeof initializeBudgetTracker === 'function') {
       initializeBudgetTracker();
-    } else {
-      console.error('Budget tracker initialization function not found');
     }
   }, 500);
-  
-  // Show default dashboard page
+
   showDashboardPage('dashboard');
 }
 
-// Dashboard navigation
 function showDashboardPage(page) {
-  console.log('Navigating to page:', page);
-  
-  if (!currentUser) {
-    console.error('No user session, redirecting to auth');
-    showAuthScreen();
-    return;
-  }
-  
   currentPage = page;
-  
+
   // Hide all pages
-  const pages = ['dashboard', 'transactions', 'budgets', 'analytics', 'profile', 'settings'];
-  pages.forEach(p => {
-    const pageElement = document.getElementById(`page-${p}`);
-    if (pageElement) {
-      pageElement.classList.add('hidden');
-    }
-  });
-  
+  document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
+
+  // Remove active state from all nav buttons
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('nav-active'));
+
   // Show selected page
-  const selectedPage = document.getElementById(`page-${page}`);
-  if (selectedPage) {
-    selectedPage.classList.remove('hidden');
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.remove('hidden');
+
+  // Set nav active
+  const navBtn = document.getElementById('nav-' + page);
+  if (navBtn) navBtn.classList.add('nav-active');
+
+  // Close sidebar on mobile
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (window.innerWidth < 768) {
+    if (sidebar) sidebar.classList.remove('translate-x-0');
+    if (sidebar) sidebar.classList.add('-translate-x-full');
+    if (overlay) overlay.classList.add('hidden');
   }
-  
-  // Update navigation active states
-  pages.forEach(p => {
-    const navItem = document.getElementById(`nav-${p}`);
-    if (navItem) {
-      if (p === page) {
-        navItem.className = 'nav-item w-full flex items-center space-x-3 px-4 py-3 text-left rounded-lg bg-blue-50 text-blue-700 font-medium';
-      } else {
-        navItem.className = 'nav-item w-full flex items-center space-x-3 px-4 py-3 text-left rounded-lg hover:bg-gray-50 text-gray-700 transition-colors';
+
+  // Page-specific logic
+  switch (page) {
+    case 'settings':
+      // Prefill API key
+      if (typeof GroqChat !== 'undefined') {
+        const keyInput = document.getElementById('groqApiKey');
+        if (keyInput) keyInput.value = GroqChat.getApiKey() || '';
       }
-    }
-  });
-  
-  // Page-specific initialization
-  switch(page) {
+      if (typeof updateDebugInfo === 'function') updateDebugInfo();
+      break;
+
     case 'transactions':
-      if (typeof renderFullTransactionsList === 'function') {
-        setTimeout(() => renderFullTransactionsList(), 100);
-      }
+      if (typeof renderFullTransactionsList === 'function') renderFullTransactionsList();
       break;
-    case 'budgets':
-      if (typeof loadBudgetsData === 'function') {
-        setTimeout(() => loadBudgetsData(), 100);
-      }
-      break;
+
     case 'analytics':
-      if (typeof updateCharts === 'function') {
-        setTimeout(() => updateCharts(), 100);
-      }
-      if (typeof generateAIInsights === 'function') {
-        setTimeout(() => generateAIInsights(), 200);
-      }
+      if (typeof updateCharts === 'function') updateCharts();
+      if (typeof generateAIInsights === 'function') generateAIInsights();
       break;
+
+    case 'budgets':
+      if (typeof loadBudgetsData === 'function') loadBudgetsData();
+      break;
+
     case 'profile':
-      if (typeof loadProfileData === 'function') {
-        setTimeout(() => loadProfileData(), 100);
-      }
+      if (typeof loadProfileData === 'function') loadProfileData();
+      break;
+
+    default:
       break;
   }
 }
 
-// Sidebar toggle for mobile
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
-  const mainContent = document.getElementById('mainContent');
-  
-  if (sidebar && mainContent) {
-    const isHidden = sidebar.style.transform === 'translateX(-100%)';
-    
-    if (isHidden) {
-      sidebar.style.transform = 'translateX(0)';
-    } else {
-      sidebar.style.transform = 'translateX(-100%)';
-    }
+  const overlay = document.getElementById('sidebarOverlay');
+  if (!sidebar) return;
+
+  const isOpen = !sidebar.classList.contains('-translate-x-full');
+  if (isOpen) {
+    sidebar.classList.add('-translate-x-full');
+    sidebar.classList.remove('translate-x-0');
+    if (overlay) overlay.classList.add('hidden');
+  } else {
+    sidebar.classList.remove('-translate-x-full');
+    sidebar.classList.add('translate-x-0');
+    if (overlay) overlay.classList.remove('hidden');
   }
 }
 
-// Logout function
+// ── Logout ────────────────────────────────────────────────────────────────────
+
 function logout() {
-  console.log('Logging out user:', currentUser?.name);
-  
-  if (confirm('Are you sure you want to logout?')) {
-    // Clear current user session
-    currentUser = null;
-    localStorage.removeItem('budgetCurrentUser');
-    
-    // Show auth screen
-    showAuthScreen();
-    
-    showAuthSuccess('Logged out successfully!');
+  currentUser = null;
+  localStorage.removeItem('budgetCurrentUser');
+  // Close chat panel
+  const chatPanel = document.getElementById('aiChatPanel');
+  if (chatPanel) chatPanel.classList.add('hidden');
+  showAuthScreen();
+}
+
+// ── Error/Success messages ────────────────────────────────────────────────────
+
+function showAuthError(form, msg) {
+  const errEl = document.getElementById(form + 'Error');
+  const okEl = document.getElementById(form + 'Success');
+  if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+  if (okEl) okEl.classList.add('hidden');
+}
+
+function showAuthSuccess(form, msg) {
+  const okEl = document.getElementById(form + 'Success');
+  const errEl = document.getElementById(form + 'Error');
+  if (okEl) { okEl.textContent = msg; okEl.classList.remove('hidden'); }
+  if (errEl) errEl.classList.add('hidden');
+}
+
+// ── Month selector helper ─────────────────────────────────────────────────────
+
+function populateMonthSelector() {
+  const sel = document.getElementById('monthSelector');
+  if (!sel) return;
+
+  const now = new Date();
+  const options = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = d.toISOString().substring(0, 7);
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    options.push(`<option value="${value}">${label}</option>`);
   }
+  // Add future month
+  const nextD = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const nextVal = nextD.toISOString().substring(0, 7);
+  const nextLabel = nextD.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  options.push(`<option value="${nextVal}">${nextLabel}</option>`);
+
+  sel.innerHTML = options.join('');
+
+  // Default to current month
+  const currentMonthVal = now.toISOString().substring(0, 7);
+  sel.value = currentMonthVal;
 }
 
-// Authentication message functions
-function showAuthError(message) {
-  clearAuthMessages();
-  const authScreen = document.getElementById('authScreen');
-  const errorDiv = document.createElement('div');
-  errorDiv.id = 'authMessage';
-  errorDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 max-w-sm text-center';
-  errorDiv.innerHTML = `
-    <div class="flex items-center justify-center space-x-2">
-      <span>❌</span>
-      <span>${message}</span>
-    </div>
-  `;
-  document.body.appendChild(errorDiv);
-  
-  // Auto remove after 4 seconds
-  setTimeout(() => {
-    if (errorDiv.parentNode) {
-      errorDiv.remove();
-    }
-  }, 4000);
+// ── Initialization ────────────────────────────────────────────────────────────
+
+function initializeAuth() {
+  loadUsersFromStorage();
+  checkExistingSession();
+  setupAuthEventListeners();
 }
 
-function showAuthSuccess(message) {
-  clearAuthMessages();
-  const successDiv = document.createElement('div');
-  successDiv.id = 'authMessage';
-  successDiv.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 max-w-sm text-center';
-  successDiv.innerHTML = `
-    <div class="flex items-center justify-center space-x-2">
-      <span>✅</span>
-      <span>${message}</span>
-    </div>
-  `;
-  document.body.appendChild(successDiv);
-  
-  // Auto remove after 3 seconds
-  setTimeout(() => {
-    if (successDiv.parentNode) {
-      successDiv.remove();
-    }
-  }, 3000);
-}
+document.addEventListener('DOMContentLoaded', initializeAuth);
 
-function clearAuthMessages() {
-  const existing = document.getElementById('authMessage');
-  if (existing) {
-    existing.remove();
-  }
-}
+// ── Exports to window ─────────────────────────────────────────────────────────
 
-// Profile and Settings functions (stubs for now)
-function loadProfileData() {
-  if (!currentUser) return;
-  
-  // Pre-fill profile form fields if they exist
-  const savingsGoalInput = document.getElementById('savingsGoal');
-  const incomeTargetInput = document.getElementById('incomeTarget');
-  const emergencyFundInput = document.getElementById('emergencyFund');
-  
-  if (savingsGoalInput) savingsGoalInput.value = currentUser.savingsGoal || '';
-  if (incomeTargetInput) incomeTargetInput.value = currentUser.incomeTarget || '';
-  if (emergencyFundInput) emergencyFundInput.value = currentUser.emergencyFund || '';
-  
-  console.log('Profile data loaded for:', currentUser.name);
-}
-
-function loadBudgetsData() {
-  console.log('Loading budgets data...');
-  // This will be implemented when budget management is expanded
-}
-
-// Make functions globally available
-window.initializeAuth = initializeAuth;
-window.showSignupForm = showSignupForm;
-window.showLoginForm = showLoginForm;
+window.hashPassword = hashPassword;
+window.isHashed = isHashed;
+window.loadUsersFromStorage = loadUsersFromStorage;
+window.saveUsersToStorage = saveUsersToStorage;
+window.checkExistingSession = checkExistingSession;
+window.handleLogin = handleLogin;
+window.handleSignup = handleSignup;
+window.showAuthScreen = showAuthScreen;
+window.showDashboard = showDashboard;
 window.showDashboardPage = showDashboardPage;
 window.toggleSidebar = toggleSidebar;
 window.logout = logout;
-window.loadProfileData = loadProfileData;
-window.loadBudgetsData = loadBudgetsData;
-
-// Auto-initialize when DOM is loaded
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeAuth);
-} else {
-  initializeAuth();
-}
+window.showAuthError = showAuthError;
+window.showAuthSuccess = showAuthSuccess;
+window.populateMonthSelector = populateMonthSelector;
+window.initializeAuth = initializeAuth;
+window.currentUser = currentUser;  // getter via closure — reassigned on login
+window.getCurrentUser = () => currentUser;
