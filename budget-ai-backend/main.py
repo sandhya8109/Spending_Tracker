@@ -1,35 +1,71 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
 import re
 import uvicorn
-import cv2
-import numpy as np
-from PIL import Image
-from datetime import datetime, timedelta
+import json
 import base64
 import io
-import pytesseract
-import json
 import platform
-
-# Advanced ML imports
-from transformers import pipeline, AutoTokenizer, AutoModel
-import torch
-import pandas as pd
-from sklearn.ensemble import IsolationForest
-from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import StandardScaler
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import pickle
-import joblib
-from prophet import Prophet
 import warnings
 warnings.filterwarnings('ignore')
+from datetime import datetime, timedelta
+
+# Optional heavy dependencies — server starts without them
+try:
+    import cv2
+    import numpy as np
+    from PIL import Image
+    import pytesseract
+    OPENCV_AVAILABLE = True
+except ImportError:
+    OPENCV_AVAILABLE = False
+    print("⚠️  OpenCV/Tesseract not available — OCR disabled")
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    print("⚠️  pandas not available — insights disabled")
+
+try:
+    from sklearn.ensemble import IsolationForest
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    print("⚠️  scikit-learn not available — ML categorization disabled")
+
+try:
+    from transformers import AutoTokenizer, AutoModel
+    import torch
+    BERT_AVAILABLE = True
+except ImportError:
+    BERT_AVAILABLE = False
+    print("⚠️  transformers/torch not available — BERT disabled")
+
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except ImportError:
+    PROPHET_AVAILABLE = False
+    print("⚠️  prophet not available — time-series prediction disabled")
+
+import pickle
+try:
+    import joblib
+except ImportError:
+    joblib = None
 
 # Auto-detect Tesseract installation
 if platform.system() == "Windows":
@@ -88,14 +124,15 @@ class AnomalyDetection(BaseModel):
 class AdvancedCategorizer:
     def __init__(self):
         # Initialize BERT for semantic understanding
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-            self.model = AutoModel.from_pretrained('bert-base-uncased')
-            self.bert_available = True
-            print("✅ BERT model loaded successfully")
-        except Exception as e:
-            print(f"⚠️ BERT not available: {e}")
-            self.bert_available = False
+        self.bert_available = False
+        if BERT_AVAILABLE:
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+                self.model = AutoModel.from_pretrained('bert-base-uncased')
+                self.bert_available = True
+                print("✅ BERT model loaded successfully")
+            except Exception as e:
+                print(f"⚠️ BERT not available: {e}")
         
         # Enhanced category mappings with semantic understanding
         self.category_embeddings = {}
@@ -147,7 +184,7 @@ class AdvancedCategorizer:
             max_features=1000,
             stop_words='english',
             ngram_range=(1, 2)
-        )
+        ) if SKLEARN_AVAILABLE else None
         
         # Load or initialize transaction history for learning
         self.transaction_history = []
@@ -284,12 +321,11 @@ class AdvancedCategorizer:
 
     def find_historical_patterns(self, item_description: str, amount: float = None) -> Optional[Dict]:
         """Find similar transactions in history"""
-        if not self.transaction_history:
+        if not self.transaction_history or not SKLEARN_AVAILABLE or not self.tfidf_vectorizer:
             return None
-        
-        # Create TF-IDF vectors for similarity comparison
+
         descriptions = [t['item'] for t in self.transaction_history] + [item_description]
-        
+
         try:
             tfidf_matrix = self.tfidf_vectorizer.fit_transform(descriptions)
             similarities = cosine_similarity(tfidf_matrix[-1:], tfidf_matrix[:-1]).flatten()
@@ -312,11 +348,14 @@ class AdvancedCategorizer:
 
     def detect_amount_anomaly(self, category: str, amount: float) -> Dict:
         """Detect if the amount is anomalous for the category"""
+        if not SKLEARN_AVAILABLE or not NUMPY_AVAILABLE:
+            return {'is_anomaly': False, 'anomaly_score': 0}
+
         category_amounts = [t['amount'] for t in self.transaction_history if t.get('category') == category]
-        
+
         if len(category_amounts) < 5:  # Need at least 5 data points
             return {'is_anomaly': False, 'anomaly_score': 0}
-        
+
         # Use Isolation Forest for anomaly detection
         try:
             amounts_array = np.array(category_amounts + [amount]).reshape(-1, 1)
@@ -375,7 +414,7 @@ class SpendingPredictor:
     def __init__(self):
         self.models = {}
         
-    def prepare_time_series_data(self, transactions: List[Dict], category: str = None) -> pd.DataFrame:
+    def prepare_time_series_data(self, transactions: List[Dict], category: str = None):
         """Prepare transaction data for time series analysis"""
         df = pd.DataFrame(transactions)
         df['date'] = pd.to_datetime(df['entryDate'])
@@ -392,6 +431,9 @@ class SpendingPredictor:
 
     def predict_spending(self, transactions: List[Dict], category: str = None, days_ahead: int = 30) -> Dict:
         """Predict future spending using Prophet"""
+        if not PANDAS_AVAILABLE or not PROPHET_AVAILABLE:
+            return {'predicted_amount': 0, 'confidence_interval': {'lower': 0, 'upper': 0},
+                    'trend': 'unavailable', 'factors': ['Install pandas and prophet for predictions']}
         try:
             df = self.prepare_time_series_data(transactions, category)
             
@@ -463,16 +505,15 @@ class InsightsEngine:
     def generate_advanced_insights(self, transactions: List[Dict], budgets: Dict = None) -> List[Dict]:
         """Generate advanced AI-powered insights"""
         insights = []
-        
+
         if not transactions:
-            return [{
-                'type': 'info',
-                'priority': 'low',
-                'title': 'Getting Started',
-                'message': 'Add transactions to unlock AI-powered insights',
-                'confidence': 1.0
-            }]
-        
+            return [{'type': 'info', 'priority': 'low', 'title': 'Getting Started',
+                     'message': 'Add transactions to unlock AI-powered insights', 'confidence': 1.0}]
+
+        if not PANDAS_AVAILABLE:
+            return [{'type': 'info', 'priority': 'low', 'title': 'ML Insights Unavailable',
+                     'message': 'Install pandas to enable advanced insights: pip install pandas', 'confidence': 1.0}]
+
         # Convert to DataFrame for analysis
         df = pd.DataFrame(transactions)
         df['date'] = pd.to_datetime(df['entryDate'])
@@ -500,7 +541,7 @@ class InsightsEngine:
         
         return insights[:10]  # Return top 10 insights
 
-    def analyze_spending_patterns(self, df: pd.DataFrame) -> List[Dict]:
+    def analyze_spending_patterns(self, df) -> List[Dict]:
         """Analyze spending patterns using clustering"""
         insights = []
         
@@ -544,14 +585,14 @@ class InsightsEngine:
         
         return insights
 
-    def detect_spending_anomalies(self, df: pd.DataFrame) -> List[Dict]:
+    def detect_spending_anomalies(self, df) -> List[Dict]:
         """Detect spending anomalies using machine learning"""
         insights = []
         
         try:
-            if len(df) < 10:
+            if len(df) < 10 or not SKLEARN_AVAILABLE or not NUMPY_AVAILABLE:
                 return insights
-            
+
             # Use Isolation Forest for anomaly detection
             features = df[['amount']].values
             iso_forest = IsolationForest(contamination=0.1, random_state=42)
@@ -578,7 +619,7 @@ class InsightsEngine:
         
         return insights
 
-    def analyze_seasonality(self, df: pd.DataFrame) -> List[Dict]:
+    def analyze_seasonality(self, df) -> List[Dict]:
         """Analyze seasonal spending patterns"""
         insights = []
         
@@ -610,7 +651,7 @@ class InsightsEngine:
         
         return insights
 
-    def optimize_budgets(self, df: pd.DataFrame, budgets: Dict) -> List[Dict]:
+    def optimize_budgets(self, df, budgets: Dict) -> List[Dict]:
         """Optimize budgets using historical data"""
         insights = []
         
@@ -778,7 +819,9 @@ async def detect_anomalies(data: Dict[str, Any]):
         
         if not transactions:
             return {"anomalies": [], "message": "No transactions to analyze"}
-        
+        if not PANDAS_AVAILABLE:
+            return {"anomalies": [], "message": "pandas not installed"}
+
         df = pd.DataFrame(transactions)
         insights = insights_engine.detect_spending_anomalies(df)
         
@@ -1093,9 +1136,11 @@ enhanced_ocr = EnhancedReceiptProcessor()
 @app.post("/api/process-receipt")
 async def process_receipt_enhanced(file: UploadFile = File(...)):
     """Enhanced receipt processing with better AI"""
+    if not OPENCV_AVAILABLE:
+        raise HTTPException(status_code=503, detail="OCR unavailable. Install opencv-python and pytesseract.")
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="File must be an image")
-    
+
     try:
         image_data = await file.read()
         nparr = np.frombuffer(image_data, np.uint8)
