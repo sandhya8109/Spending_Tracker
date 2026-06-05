@@ -1167,6 +1167,64 @@ async def retrain_models(background_tasks: BackgroundTasks):
         "data_points": len(categorizer.transaction_history)
     }
 
+# AI Chat endpoint using Groq (free)
+@app.post("/api/chat")
+async def chat_with_ai(data: Dict[str, Any]):
+    """AI financial chat powered by Groq (free tier)"""
+    api_key = data.get("api_key", "").strip()
+    if not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Groq API key required. Get one free at https://console.groq.com"
+        )
+
+    try:
+        from groq import Groq
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Groq not installed. Run: pip install groq")
+
+    messages = data.get("messages", [])
+    ctx = data.get("context", {})
+
+    system_prompt = f"""You are a smart personal finance AI assistant built into a spending tracker app.
+Be concise, practical, and specific with numbers.
+
+User's current financial snapshot:
+- Month: {ctx.get('month', 'current')}
+- Income this month: ${float(ctx.get('total_income', 0)):.2f}
+- Spending this month: ${float(ctx.get('total_spent', 0)):.2f}
+- Net balance: ${float(ctx.get('net_balance', 0)):.2f}
+- Savings rate: {float(ctx.get('savings_rate', 0)):.1f}%
+- Top spending category: {ctx.get('top_category', 'N/A')} (${float(ctx.get('top_category_amount', 0)):.2f})
+- Number of transactions: {ctx.get('transaction_count', 0)}
+- Budget alerts: {ctx.get('budget_alerts', 'None')}
+
+Answer in 2-4 sentences unless detail is explicitly needed. Use the user's actual numbers when relevant."""
+
+    chat_messages = [{"role": "system", "content": system_prompt}]
+    for m in messages:
+        if m.get("role") in ("user", "assistant") and m.get("content"):
+            chat_messages.append({"role": m["role"], "content": m["content"]})
+
+    try:
+        client = Groq(api_key=api_key)
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=chat_messages,
+            max_tokens=600,
+            temperature=0.7
+        )
+        return {
+            "message": completion.choices[0].message.content,
+            "model": completion.model
+        }
+    except Exception as e:
+        err = str(e)
+        if "invalid_api_key" in err.lower() or "authentication" in err.lower():
+            raise HTTPException(status_code=401, detail="Invalid Groq API key. Check your key at console.groq.com")
+        raise HTTPException(status_code=500, detail=f"Groq error: {err}")
+
+
 # Health check endpoint
 @app.get("/api/health")
 async def health_check():

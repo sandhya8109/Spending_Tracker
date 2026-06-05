@@ -1,10 +1,22 @@
 // Authentication and User Management System
-// This file handles login, signup, and user session management
 
 // Global variables for user management
 let users = {};
 let currentUser = null;
 let currentPage = 'dashboard';
+
+// Hash password using browser-native SHA-256
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode('sbt_v1_' + password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function isHashed(str) {
+    return typeof str === 'string' && /^[a-f0-9]{64}$/.test(str);
+}
 
 // Initialize authentication system
 function initializeAuth() {
@@ -109,51 +121,55 @@ function handleLogin(event) {
   submitButton.textContent = 'Signing In...';
   submitButton.disabled = true;
   
-  // Simulate processing delay for better UX
-  setTimeout(() => {
-    // Validate inputs
+  // Hash then validate
+  hashPassword(password).then(async (hashedInput) => {
     if (!email || !password) {
       showAuthError('Please fill in all fields');
       resetSubmitButton(submitButton, originalText);
       return;
     }
-    
-    // Check if user exists
+
     if (!users[email]) {
       showAuthError('Account not found. Please check your email or sign up.');
       resetSubmitButton(submitButton, originalText);
       return;
     }
-    
-    // Validate password
-    if (users[email].password !== password) {
+
+    const stored = users[email].password;
+    let passwordMatch = false;
+
+    if (isHashed(stored)) {
+      // Normal path: compare hashes
+      passwordMatch = stored === hashedInput;
+    } else {
+      // Migration path: stored password is still plaintext
+      passwordMatch = stored === password;
+      if (passwordMatch) {
+        // Migrate to hashed
+        users[email].password = hashedInput;
+        saveUsersToStorage();
+      }
+    }
+
+    if (!passwordMatch) {
       showAuthError('Incorrect password. Please try again.');
       resetSubmitButton(submitButton, originalText);
       return;
     }
-    
-    // Successful login
+
     currentUser = users[email];
     currentUser.lastLogin = new Date().toISOString();
-    
-    // Save current user session
     localStorage.setItem('budgetCurrentUser', JSON.stringify(currentUser));
-    
-    // Update users storage
     users[email] = currentUser;
     saveUsersToStorage();
-    
-    console.log('Login successful for:', currentUser.name);
-    
-    // Show success message
+
     showAuthSuccess(`Welcome back, ${currentUser.name}!`);
-    
-    // Navigate to dashboard
-    setTimeout(() => {
-      showDashboard();
-    }, 1500);
-    
-  }, 1000);
+    setTimeout(() => showDashboard(), 1500);
+
+  }).catch(() => {
+    showAuthError('Login failed. Please try again.');
+    resetSubmitButton(submitButton, originalText);
+  });
 }
 
 // Handle signup form submission
@@ -173,88 +189,69 @@ function handleSignup(event) {
   submitButton.textContent = 'Creating Account...';
   submitButton.disabled = true;
   
-  // Simulate processing delay
-  setTimeout(() => {
-    // Validate inputs
-    if (!name || !email || !password) {
-      showAuthError('Please fill in all required fields');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-    
-    // Validate name length
-    if (name.length < 2) {
-      showAuthError('Name must be at least 2 characters long');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-    
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showAuthError('Please enter a valid email address');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-    
-    // Validate password strength
-    if (password.length < 6) {
-      showAuthError('Password must be at least 6 characters long');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-    
-    // Check if user already exists
-    if (users[email]) {
-      showAuthError('An account with this email already exists. Please login instead.');
-      resetSubmitButton(submitButton, originalText);
-      setTimeout(() => {
-        showLoginForm();
-        document.getElementById('loginEmail').value = email;
-      }, 2000);
-      return;
-    }
-    
-    // Validate income if provided
-    if (income < 0 || income > 1000000) {
-      showAuthError('Please enter a valid income amount');
-      resetSubmitButton(submitButton, originalText);
-      return;
-    }
-    
-    // Create new user
+  // Validate first, then hash
+  if (!name || !email || !password) {
+    showAuthError('Please fill in all required fields');
+    resetSubmitButton(submitButton, originalText);
+    return;
+  }
+  if (name.length < 2) {
+    showAuthError('Name must be at least 2 characters long');
+    resetSubmitButton(submitButton, originalText);
+    return;
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showAuthError('Please enter a valid email address');
+    resetSubmitButton(submitButton, originalText);
+    return;
+  }
+  if (password.length < 6) {
+    showAuthError('Password must be at least 6 characters long');
+    resetSubmitButton(submitButton, originalText);
+    return;
+  }
+  if (users[email]) {
+    showAuthError('An account with this email already exists. Please login instead.');
+    resetSubmitButton(submitButton, originalText);
+    setTimeout(() => {
+      showLoginForm();
+      document.getElementById('loginEmail').value = email;
+    }, 2000);
+    return;
+  }
+  if (income < 0 || income > 1000000) {
+    showAuthError('Please enter a valid income amount');
+    resetSubmitButton(submitButton, originalText);
+    return;
+  }
+
+  hashPassword(password).then((hashedPw) => {
     const newUser = {
       id: Date.now() + Math.random(),
       name: name,
       email: email,
-      password: password, // In production, this should be hashed
+      password: hashedPw,
       incomeTarget: income,
-      savingsGoal: income * 12 * 0.2, // Default to 20% of annual income
-      emergencyFund: income * 6, // Default to 6 months of income
+      savingsGoal: income * 12 * 0.2,
+      emergencyFund: income * 6,
       customCategories: {},
       createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString()
     };
-    
-    // Save user
+
     users[email] = newUser;
     currentUser = newUser;
-    
-    // Save to localStorage
     saveUsersToStorage();
     localStorage.setItem('budgetCurrentUser', JSON.stringify(currentUser));
-    
-    console.log('Signup successful for:', currentUser.name);
-    
-    // Show success message
+
     showAuthSuccess(`Account created successfully! Welcome, ${currentUser.name}!`);
-    
-    // Navigate to dashboard
-    setTimeout(() => {
-      showDashboard();
-    }, 2000);
-    
-  }, 1200);
+    setTimeout(() => showDashboard(), 2000);
+
+  }).catch(() => {
+    showAuthError('Signup failed. Please try again.');
+    resetSubmitButton(submitButton, originalText);
+  });
 }
 
 // Reset submit button state
@@ -265,9 +262,14 @@ function resetSubmitButton(button, originalText) {
 
 // Show authentication screens
 function showAuthScreen() {
-  console.log('Showing authentication screen');
   document.getElementById('authScreen').classList.remove('hidden');
   document.getElementById('dashboardScreen').classList.add('hidden');
+
+  // Hide AI chat button and panel
+  const chatBtn = document.getElementById('chatToggleBtn');
+  if (chatBtn) chatBtn.classList.add('hidden');
+  const chatPanel = document.getElementById('aiChatPanel');
+  if (chatPanel) chatPanel.classList.add('hidden');
   
   // Clear any existing error messages
   clearAuthMessages();
@@ -289,17 +291,17 @@ function showAuthScreen() {
 }
 
 function showDashboard() {
-  console.log('Showing dashboard for user:', currentUser?.name);
-  
   if (!currentUser) {
-    console.error('No current user, redirecting to auth');
     showAuthScreen();
     return;
   }
-  
-  // Hide auth screen, show dashboard
+
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('dashboardScreen').classList.remove('hidden');
+
+  // Show AI chat button
+  const chatBtn = document.getElementById('chatToggleBtn');
+  if (chatBtn) chatBtn.classList.remove('hidden');
   
   // Update welcome message
   const welcomeUser = document.getElementById('welcomeUser');

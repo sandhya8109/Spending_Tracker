@@ -1446,4 +1446,191 @@ if (document.readyState === 'loading') {
 // Export for global access
 window.IntegratedBudgetAI = IntegratedBudgetAI;
 
+// ========== GROQ AI CHAT ==========
+
+const GroqChat = {
+    history: [],
+    apiBaseUrl: 'http://localhost:8000/api',
+
+    getApiKey() {
+        return localStorage.getItem('groqApiKey') || '';
+    },
+
+    saveApiKey(key) {
+        localStorage.setItem('groqApiKey', key.trim());
+    },
+
+    getFinancialContext() {
+        try {
+            const now = typeof selectedMonth !== 'undefined' ? selectedMonth : new Date().toISOString().substring(0, 7);
+            const allTx = typeof transactions !== 'undefined' ? transactions : [];
+            const monthTx = allTx.filter(t => (t.month === now) || (t.entryDate || '').startsWith(now));
+
+            const expenses = monthTx.filter(t => t.type === 'expense');
+            const income = monthTx.filter(t => t.type === 'income');
+            const totalSpent = expenses.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+            const totalIncome = income.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+            const netBalance = totalIncome - totalSpent;
+            const savingsRate = totalIncome > 0 ? ((netBalance / totalIncome) * 100) : 0;
+
+            const catSpend = {};
+            expenses.forEach(t => { catSpend[t.category] = (catSpend[t.category] || 0) + parseFloat(t.amount || 0); });
+            const topCat = Object.entries(catSpend).sort(([,a],[,b]) => b - a)[0];
+
+            // Budget alerts
+            const budgets = typeof adjustableBudgets !== 'undefined' ? adjustableBudgets : {};
+            const alerts = [];
+            Object.entries(catSpend).forEach(([cat, spent]) => {
+                const budget = budgets.expense?.[cat];
+                if (budget && (spent / budget) > 0.9) {
+                    alerts.push(`${cat} at ${((spent/budget)*100).toFixed(0)}% of budget`);
+                }
+            });
+
+            return {
+                month: now,
+                total_income: totalIncome,
+                total_spent: totalSpent,
+                net_balance: netBalance,
+                savings_rate: savingsRate,
+                top_category: topCat ? topCat[0] : 'N/A',
+                top_category_amount: topCat ? topCat[1] : 0,
+                transaction_count: allTx.length,
+                budget_alerts: alerts.length ? alerts.join(', ') : 'None'
+            };
+        } catch (e) {
+            return {};
+        }
+    },
+
+    addMessage(role, content) {
+        this.history.push({ role, content });
+        this.renderMessage(role, content);
+    },
+
+    renderMessage(role, content) {
+        const container = document.getElementById('chatMessages');
+        if (!container) return;
+
+        // Clear the welcome placeholder on first message
+        if (this.history.length === 1) container.innerHTML = '';
+
+        const isUser = role === 'user';
+        const div = document.createElement('div');
+        div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+        div.innerHTML = `
+            <div class="max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
+                isUser
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-br-sm'
+                    : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+            }">
+                ${content.replace(/\n/g, '<br>')}
+            </div>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    },
+
+    renderTyping() {
+        const container = document.getElementById('chatMessages');
+        if (!container) return null;
+        const div = document.createElement('div');
+        div.id = 'chatTypingIndicator';
+        div.className = 'flex justify-start';
+        div.innerHTML = `<div class="bg-gray-100 text-gray-500 px-3 py-2 rounded-2xl rounded-bl-sm text-sm">
+            <span class="animate-pulse">AI is thinking...</span>
+        </div>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        return div;
+    },
+
+    async send(userMessage) {
+        if (!userMessage.trim()) return;
+
+        const apiKey = this.getApiKey();
+        if (!apiKey) {
+            document.getElementById('chatApiKeyNotice')?.classList.remove('hidden');
+            return;
+        }
+        document.getElementById('chatApiKeyNotice')?.classList.add('hidden');
+
+        this.addMessage('user', userMessage);
+
+        const input = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('chatSendBtn');
+        if (input) input.value = '';
+        if (sendBtn) sendBtn.disabled = true;
+
+        const typingEl = this.renderTyping();
+
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    api_key: apiKey,
+                    messages: this.history,
+                    context: this.getFinancialContext()
+                })
+            });
+
+            typingEl?.remove();
+
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                this.addMessage('assistant', `Sorry, I couldn't respond: ${err.detail || response.statusText}`);
+            } else {
+                const data = await response.json();
+                this.addMessage('assistant', data.message);
+            }
+        } catch (e) {
+            typingEl?.remove();
+            this.addMessage('assistant', 'Backend is offline. Start the Python server (cd budget-ai-backend && uvicorn main:app) to enable AI chat.');
+        } finally {
+            if (sendBtn) sendBtn.disabled = false;
+            if (input) input.focus();
+        }
+    }
+};
+
+// Global functions called from HTML
+window.toggleAIChat = function() {
+    const panel = document.getElementById('aiChatPanel');
+    if (!panel) return;
+    const isHidden = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !isHidden);
+    if (isHidden) {
+        setTimeout(() => document.getElementById('chatInput')?.focus(), 100);
+        if (!GroqChat.getApiKey()) {
+            document.getElementById('chatApiKeyNotice')?.classList.remove('hidden');
+        }
+    }
+};
+
+window.sendChatMessage = function() {
+    const input = document.getElementById('chatInput');
+    if (input) GroqChat.send(input.value);
+};
+
+window.saveGroqApiKey = function() {
+    const input = document.getElementById('groqApiKey');
+    if (!input || !input.value.trim()) {
+        alert('Please enter a Groq API key');
+        return;
+    }
+    GroqChat.saveApiKey(input.value.trim());
+    input.type = 'password';
+    document.getElementById('chatApiKeyNotice')?.classList.add('hidden');
+    showNotification('Groq API key saved! AI chat is ready.', 'success', 3000);
+};
+
+// Pre-fill API key input on settings load
+document.addEventListener('DOMContentLoaded', () => {
+    const keyInput = document.getElementById('groqApiKey');
+    if (keyInput) {
+        const saved = GroqChat.getApiKey();
+        if (saved) keyInput.value = saved;
+    }
+});
+
 console.log('🎯 AI Integration Script Loaded - Duplicates Fixed - Waiting for app initialization...');

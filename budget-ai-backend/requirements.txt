@@ -35,6 +35,9 @@ nltk==3.8.1
 # Caching and Storage
 joblib==1.3.2
 
+# AI Chat
+groq>=0.9.0
+
 # Utilities
 python-dateutil==2.8.2
 requests==2.31.0
