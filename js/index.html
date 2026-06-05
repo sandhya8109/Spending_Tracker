@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Budget Tracker</title>
+  <!-- Dark mode must be configured before Tailwind loads -->
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <!-- Apply saved dark mode before render to avoid flash -->
+  <script>if(localStorage.getItem('darkMode')==='1')document.documentElement.classList.add('dark')</script>
+  <script src="js/app.js" defer></script>
+  <script src="js/ai-integration.js" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/auth.js" defer></script>
+  <style>
+    .nav-active { background-color: rgba(255,255,255,0.18); border-left: 3px solid #fff; }
+    .tab-active { border-bottom: 2px solid #6366f1; color: #6366f1; font-weight: 600; }
+    .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+    .sidebar-transition { transition: transform 0.3s ease; }
+    .notification { position: fixed; top: 1rem; right: 1rem; z-index: 9999; padding: 0.75rem 1.25rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease; max-width: 320px; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    .typing-dot { display: inline-block; width: 6px; height: 6px; background: #6b7280; border-radius: 50%; margin: 0 1px; animation: blink 1.4s infinite both; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+    .chat-bubble-user { background: #6366f1; color: #fff; border-radius: 18px 18px 4px 18px; max-width: 80%; }
+    .chat-bubble-ai { background: #f3f4f6; color: #111827; border-radius: 18px 18px 18px 4px; max-width: 85%; }
+    html.dark .chat-bubble-ai { background: #374151; color: #f3f4f6; }
+    canvas { max-width: 100%; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #f9fafb; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 5px; }
+    html.dark ::-webkit-scrollbar-track { background: #1f2937; }
+    html.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans">
+
+  <!-- ===== AUTH SCREEN ===== -->
+  <div id="authScreen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
+      <div class="text-center mb-8">
+        <div class="text-5xl mb-3">💰</div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Smart Budget Tracker</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">AI-powered personal finance</p>
+      </div>
+
+      <!-- Tab switcher -->
+      <div class="flex mb-6 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+        <button id="loginTabBtn"
+          onclick="document.getElementById('loginForm').classList.remove('hidden');document.getElementById('signupForm').classList.add('hidden');document.getElementById('loginTabBtn').classList.add('bg-white','dark:bg-gray-600','shadow');document.getElementById('signupTabBtn').classList.remove('bg-white','dark:bg-gray-600','shadow')"
+          class="flex-1 py-2 rounded-md text-sm font-medium bg-white dark:bg-gray-600 shadow transition dark:text-white">Sign In</button>
+        <button id="signupTabBtn"
+          onclick="document.getElementById('signupForm').classList.remove('hidden');document.getElementById('loginForm').classList.add('hidden');document.getElementById('signupTabBtn').classList.add('bg-white','dark:bg-gray-600','shadow');document.getElementById('loginTabBtn').classList.remove('bg-white','dark:bg-gray-600','shadow')"
+          class="flex-1 py-2 rounded-md text-sm font-medium transition dark:text-gray-300">Create Account</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="loginForm">
+        <form id="loginFormElement" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input id="loginEmail" type="email" required placeholder="you@example.com"
+              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <input id="loginPassword" type="password" required placeholder="••••••••"
+              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div id="loginError" class="hidden text-red-600 text-sm bg-red-50 dark:bg-red-900/30 rounded-lg px-3 py-2"></div>
+          <div id="loginSuccess" class="hidden text-green-600 text-sm bg-green-50 dark:bg-green-900/30 rounded-lg px-3 py-2"></div>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition text-sm">
+            Sign In
+          </button>
+        </form>
+      </div>
+
+      <!-- Signup Form -->
+      <div id="signupForm" class="hidden">
+        <form id="signupFormElement" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+            <input id="signupName" type="text" required placeholder="Sandy Rimal"
+              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input id="signupEmail" type="email" required placeholder="you@example.com"
+              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <input id="signupPassword" type="password" required placeholder="Min 6 characters"
+              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monthly Income ($)</label>
+            <input id="signupIncome" type="number" min="0" step="0.01" placeholder="3000"
+              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div id="signupError" class="hidden text-red-600 text-sm bg-red-50 dark:bg-red-900/30 rounded-lg px-3 py-2"></div>
+          <div id="signupSuccess" class="hidden text-green-600 text-sm bg-green-50 dark:bg-green-900/30 rounded-lg px-3 py-2"></div>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition text-sm">
+            Create Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DASHBOARD SCREEN ===== -->
+  <div id="dashboardScreen" class="hidden min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar-transition fixed inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-indigo-700 to-indigo-900 text-white flex flex-col shadow-xl md:relative md:translate-x-0 -translate-x-full">
+      <div class="p-5 border-b border-indigo-600">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">💰</div>
+          <div>
+            <div class="font-bold text-lg leading-tight">Budget Tracker</div>
+            <div class="text-indigo-300 text-xs">Smart Finance</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+        <button id="nav-dashboard" onclick="showDashboardPage('dashboard')"
+          class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-white/10 transition text-left">
+          <span>📊</span> Dashboard
+        </button>
+        <button id="nav-transactions" onclick="showDashboardPage('transactions')"
+          class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-white/10 transition text-left">
+          <span>💳</span> Transactions
+        </button>
+        <button id="nav-budgets" onclick="showDashboardPage('budgets')"
+          class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-white/10 transition text-left">
+          <span>🎯</span> Budgets
+        </button>
+        <button id="nav-analytics" onclick="showDashboardPage('analytics')"
+          class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-white/10 transition text-left">
+          <span>📈</span> Analytics
+        </button>
+        <button id="nav-profile" onclick="showDashboardPage('profile')"
+          class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-white/10 transition text-left">
+          <span>👤</span> Profile
+        </button>
+        <button id="nav-settings" onclick="showDashboardPage('settings')"
+          class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-white/10 transition text-left">
+          <span>⚙️</span> Settings
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-indigo-600">
+        <div id="welcomeUser" class="text-sm font-medium text-indigo-200 mb-3 truncate"></div>
+        <button onclick="logout()" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-indigo-200 hover:bg-white/10 transition">
+          <span>🚪</span> Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Sidebar overlay (mobile) -->
+    <div id="sidebarOverlay" class="hidden fixed inset-0 bg-black/50 z-30 md:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="flex-1 flex flex-col min-w-0">
+      <!-- Top bar -->
+      <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
+        <button id="sidebarToggle" onclick="toggleSidebar()" class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-600 dark:text-gray-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+        <div class="flex-1 flex items-center gap-2">
+          <label class="text-xs font-medium text-gray-500 dark:text-gray-400 hidden sm:block">Month:</label>
+          <select id="monthSelector" onchange="changeMonth(this.value)"
+            class="text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 cursor-pointer">
+          </select>
+        </div>
+        <button id="darkModeBtn" onclick="toggleDarkMode()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-500 dark:text-gray-400 text-lg" title="Toggle dark mode">🌙</button>
+        <button onclick="showDashboardPage('settings')" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-500 dark:text-gray-400" title="Settings">⚙️</button>
+      </header>
+
+      <!-- Page container -->
+      <main class="flex-1 overflow-y-auto p-4 md:p-6">
+
+        <!-- ===== DASHBOARD PAGE ===== -->
+        <div id="page-dashboard" class="page-content space-y-6">
+          <!-- Stat cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div id="totalIncomeCard" class="card-hover bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-700">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Income</span>
+                <span class="text-xl">💚</span>
+              </div>
+              <div class="income-amount text-2xl font-bold text-green-600">$0.00</div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">This month</div>
+            </div>
+            <div id="totalExpenseCard" class="card-hover bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-700">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Expenses</span>
+                <span class="text-xl">🔴</span>
+              </div>
+              <div class="expense-amount text-2xl font-bold text-red-500">$0.00</div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">This month</div>
+            </div>
+            <div id="netBalanceCard" class="card-hover bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 border border-gray-100 dark:border-gray-700">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Net Balance</span>
+                <span class="text-xl">⚖️</span>
+              </div>
+              <div class="balance-amount text-2xl font-bold text-indigo-600">$0.00</div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Income − Expenses</div>
+            </div>
+          </div>
+
+          <!-- Quick Add Form -->
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+              <span>➕</span> Add Transaction
+            </h2>
+            <form id="budgetForm" onsubmit="handleFormSubmit(event)" class="space-y-3">
+              <!-- Full-width description -->
+              <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
+                <input id="item" type="text" required
+                  placeholder="What did you buy? (e.g. Starbucks coffee, Shell petrol, Walmart groceries)"
+                  class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" autocomplete="off" />
+                <div id="aiSuggestionBox" class="mt-2 text-sm min-h-[1.5rem]"></div>
+              </div>
+
+              <!-- Amount, Type, Category, Date in 4-col grid -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Amount ($)</label>
+                  <input id="amount" type="number" min="0.01" step="0.01" required placeholder="0.00"
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
+                  <select id="category" onchange="updateSubcategories()"
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="expense">💸 Expense</option>
+                    <option value="income">💰 Income</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category</label>
+                  <select id="subcategory"
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Date</label>
+                  <input id="entryDate" type="date" required
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+
+              <!-- Receipt upload + submit -->
+              <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                <div class="flex-1">
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Receipt Photo (optional)</label>
+                  <input id="receiptUpload" type="file" accept="image/*"
+                    class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                  <div id="ocrResult" class="mt-1 text-xs text-gray-500 min-h-[1rem]"></div>
+                </div>
+                <button type="submit"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-lg text-sm transition whitespace-nowrap">
+                  Add Transaction
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Recent Transactions -->
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-base font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2"><span>🕒</span> Recent Transactions</h2>
+              <button onclick="showDashboardPage('transactions')" class="text-xs text-indigo-600 hover:underline">View All →</button>
+            </div>
+            <div id="transactionList" class="space-y-2">
+              <p class="text-gray-400 text-sm text-center py-8">No transactions yet. Add your first one above!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== TRANSACTIONS PAGE ===== -->
+        <div id="page-transactions" class="page-content hidden space-y-5">
+          <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Transactions</h1>
+
+          <!-- Tabs -->
+          <div id="tab-transactions" class="flex border-b border-gray-200">
+            <button id="tab-btn-transactions" onclick="switchTransactionTab('transactions')"
+              class="tab-btn px-5 py-2.5 text-sm font-medium tab-active border-b-2 border-indigo-600 text-indigo-600">All</button>
+            <button id="tab-btn-expenses" onclick="switchTransactionTab('expenses')"
+              class="tab-btn px-5 py-2.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border-b-2 border-transparent dark:border-gray-700">Expenses</button>
+            <button id="tab-btn-income" onclick="switchTransactionTab('income')"
+              class="tab-btn px-5 py-2.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border-b-2 border-transparent dark:border-gray-700">Income</button>
+          </div>
+
+          <div id="content-transactions">
+            <h2 id="transactionTitle" class="text-sm font-semibold text-gray-700 mb-2">All Transactions</h2>
+            <div id="transactionListFull" class="space-y-2"></div>
+          </div>
+          <div id="content-expenses" class="hidden">
+            <h2 id="expenseTitle" class="text-sm font-semibold text-gray-700 mb-2">Expenses</h2>
+            <div id="expenseList" class="space-y-2"></div>
+          </div>
+          <div id="content-income" class="hidden">
+            <h2 id="incomeTitle" class="text-sm font-semibold text-gray-700 mb-2">Income</h2>
+            <div id="incomeList" class="space-y-2"></div>
+          </div>
+
+          <!-- Hidden compat elements required by spec -->
+          <table id="transactionTable" class="hidden"><tbody></tbody></table>
+          <table id="expenseTable" class="hidden"><tbody></tbody></table>
+          <table id="incomeTable" class="hidden"><tbody></tbody></table>
+          <div id="finalSummary" class="hidden"></div>
+        </div>
+
+        <!-- ===== BUDGETS PAGE ===== -->
+        <div id="page-budgets" class="page-content hidden space-y-5">
+          <div class="flex items-center justify-between">
+            <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Budget Management</h1>
+            <span class="text-xs text-gray-400">Adjust monthly limits per category</span>
+          </div>
+          <div id="budgetCardsContainer" class="space-y-3">
+            <p class="text-gray-400 text-sm text-center py-8">Loading budgets...</p>
+          </div>
+        </div>
+
+        <!-- ===== ANALYTICS PAGE ===== -->
+        <div id="page-analytics" class="page-content hidden space-y-6">
+          <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Analytics</h1>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Expense Breakdown</h3>
+              <canvas id="expensePieChart" width="280" height="240"></canvas>
+              <div id="expenseLegend" class="mt-3 space-y-1 text-xs"></div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Monthly Trends (6 months)</h3>
+              <canvas id="monthlyTrendsChart" width="280" height="240"></canvas>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Budget vs Actual Spending</h3>
+            <canvas id="budgetComparisonChart" width="560" height="180"></canvas>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2"><span>🤖</span> AI Insights</h3>
+            <div id="aiInsights" class="space-y-2 text-sm text-gray-600">
+              <p class="text-gray-400">Loading insights...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== PROFILE PAGE ===== -->
+        <div id="page-profile" class="page-content hidden space-y-6">
+          <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Profile &amp; Goals</h1>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Financial Goals</h3>
+              <form id="goalsForm" onsubmit="saveGoals(event)" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Monthly Savings Goal ($)</label>
+                  <input id="savingsGoal" type="number" min="0" step="0.01" placeholder="500"
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Monthly Income Target ($)</label>
+                  <input id="incomeTarget" type="number" min="0" step="0.01" placeholder="3000"
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Emergency Fund Target ($)</label>
+                  <input id="emergencyFund" type="number" min="0" step="0.01" placeholder="10000"
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg text-sm transition">
+                  Save Goals
+                </button>
+              </form>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Goal Progress</h3>
+              <div id="goalProgress" class="space-y-4">
+                <p class="text-gray-400 text-sm">Set your goals to see progress here.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Custom Categories -->
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Custom Categories</h3>
+            <form id="addCategoryForm" onsubmit="addCustomCategory(event)" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div class="col-span-2">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category Name</label>
+                <input id="categoryName" type="text" required placeholder="e.g. Pet Care"
+                  class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
+                <select id="categoryType"
+                  class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Budget ($)</label>
+                <input id="categoryBudget" type="number" min="0" step="0.01" placeholder="100"
+                  class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div class="col-span-2 sm:col-span-4">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2 rounded-lg text-sm transition">
+                  Add Category
+                </button>
+              </div>
+            </form>
+            <div id="customCategories" class="space-y-2">
+              <p class="text-gray-400 text-sm">No custom categories yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== SETTINGS PAGE ===== -->
+        <div id="page-settings" class="page-content hidden space-y-6">
+          <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Settings</h1>
+
+          <!-- Groq API Key -->
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 mb-1">AI Configuration</h3>
+            <p class="text-xs text-gray-500 mb-4">Connect Groq for free AI-powered chat and insights</p>
+            <div class="space-y-3 max-w-md">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Groq API Key (100% free at console.groq.com)</label>
+                <input id="groqApiKey" type="password" placeholder="gsk_..."
+                  class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <button onclick="saveGroqApiKey()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition">
+                Save API Key
+              </button>
+            </div>
+          </div>
+
+          <!-- Data Management -->
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Data Management</h3>
+            <div class="space-y-4">
+              <div class="max-w-sm">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Import Data (JSON)</label>
+                <input id="importFile" type="file" accept=".json"
+                  class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button onclick="importData()" class="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">Import</button>
+                <button onclick="exportData()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">Export JSON</button>
+                <button onclick="showDataStats()" class="bg-gray-600 hover:bg-gray-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">Stats</button>
+                <button onclick="if(confirm('Delete ALL data permanently? This cannot be undone.'))clearAllData()"
+                  class="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition">Clear All Data</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Debug Info -->
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">Debug Info</h3>
+            <pre id="debugInfo" class="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">Click Stats to load debug information.</pre>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== AI CHAT BUTTON (hidden by default) ===== -->
+  <button id="chatToggleBtn" onclick="toggleAIChat()"
+    class="hidden fixed bottom-6 right-6 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-full w-14 h-14 items-center justify-center shadow-lg transition text-2xl"
+    title="AI Finance Assistant">
+    🤖
+  </button>
+
+  <!-- ===== AI CHAT PANEL ===== -->
+  <div id="aiChatPanel" class="hidden fixed bottom-24 right-6 z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex-col overflow-hidden"
+    style="width:380px;height:520px;">
+    <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 flex-shrink-0">
+      <div class="flex items-center gap-2 text-white">
+        <span class="text-xl">🤖</span>
+        <div>
+          <div class="font-semibold text-sm">Finance AI</div>
+          <div class="text-xs text-indigo-200">Powered by Groq Llama 3.1</div>
+        </div>
+      </div>
+      <button onclick="toggleAIChat()" class="text-white/70 hover:text-white text-xl leading-none">✕</button>
+    </div>
+    <div id="chatApiKeyNotice" class="hidden px-4 py-2 bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300 flex-shrink-0">
+      ⚠️ No API key set.
+      <button onclick="showDashboardPage('settings');toggleAIChat()" class="underline font-medium">Add your free Groq key</button>
+    </div>
+    <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm min-h-0">
+      <div class="chat-bubble-ai inline-block px-3 py-2">
+        👋 Hi! I'm your Finance AI. Ask me anything about your spending, budget, or financial goals!
+      </div>
+    </div>
+    <div class="p-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 flex-shrink-0">
+      <input id="chatInput" type="text" placeholder="Ask about your finances..."
+        class="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}" />
+      <button id="chatSendBtn" onclick="sendChatMessage()"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-9 h-9 flex items-center justify-center transition text-sm flex-shrink-0">
+        ➤
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>
