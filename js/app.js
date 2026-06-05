@@ -55,7 +55,9 @@ let analyticsData = {
   trends: []
 };
 
-let selectedMonth = '2025-08';
+// Default to current month
+const _now = new Date();
+let selectedMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
 
 // User-specific data management
 let userDataLoaded = false;
@@ -78,9 +80,9 @@ function initializeBudgetTracker() {
     const monthSelector = document.getElementById('monthSelector');
     const entryDateInput = document.getElementById('entryDate');
     
-    // Set initial values
-    selectedMonth = monthSelector.value;
-    entryDateInput.value = `${selectedMonth}-01`;
+    // Set month selector to current month
+    if (monthSelector) monthSelector.value = selectedMonth;
+    if (entryDateInput) entryDateInput.value = new Date().toISOString().split('T')[0];
     
     // Setup event listeners (remove existing ones first to prevent duplicates)
     if (budgetForm) {
@@ -761,34 +763,93 @@ function handleReceiptUpload(event) {
   }, 2000);
 }
 
-// Item input handler for AI suggestions
-function handleItemInput(event) {
-  const input = event.target.value;
-  const suggestion = document.getElementById('aiSuggestion');
-  
-  if (input.length > 2) {
-    // Mock AI category suggestion
-    const suggestions = {
-      'walmart': 'Grocery',
-      'mcdonalds': 'Food',
-      'shell': 'Petrol',
-      'rent': 'Rent',
-      'gym': 'Gym',
-      'phone': 'Mobile'
-    };
-    
-    const lowerInput = input.toLowerCase();
-    for (const [keyword, category] of Object.entries(suggestions)) {
-      if (lowerInput.includes(keyword)) {
-        suggestion.textContent = `💡 Suggested category: ${category}`;
-        suggestion.className = 'text-xs text-blue-500 mt-1';
-        return;
-      }
-    }
+// Local keyword categorization (instant, no backend needed)
+const _categoryKeywords = {
+  'Grocery':   ['grocery','supermarket','walmart','costco','kroger','safeway','aldi','trader joe','whole foods','market','sainsbury','tesco','lidl','asda'],
+  'Food':      ['restaurant','pizza','mcdonalds','mcdonald','subway','starbucks','coffee','cafe','burger','kfc','taco','chipotle','domino','lunch','dinner','breakfast','eat','takeaway','takeout','doordash','ubereats','zomato','swiggy'],
+  'Petrol':    ['gas','fuel','petrol','shell','exxon','bp','chevron','pump','mobil','texaco','caltex'],
+  'Rent':      ['rent','apartment','mortgage','lease','housing','landlord','property'],
+  'Mobile':    ['phone','mobile','verizon','att','at&t','tmobile','t-mobile','cell','sim','airtel','jio','vodafone','plan'],
+  'Gym':       ['gym','fitness','workout','yoga','crossfit','membership','planet fitness','la fitness','anytime fitness'],
+  'Home':      ['furniture','ikea','home depot','lowes','appliance','cleaning','decor','hardware','mattress'],
+  'Insurance': ['insurance','premium','coverage','geico','allstate','progressive','state farm'],
+  'Tuition':   ['tuition','school','education','college','university','course','class','udemy','coursera'],
+  'Extra':     ['amazon','netflix','spotify','hulu','disney','subscription','entertainment','movie','cinema','shopping','online']
+};
+
+function localCategorize(text) {
+  const t = text.toLowerCase();
+  for (const [cat, keywords] of Object.entries(_categoryKeywords)) {
+    if (keywords.some(k => t.includes(k))) return cat;
   }
-  
-  suggestion.textContent = '';
+  return null;
 }
+
+function applyAICategory(category) {
+  const catSelect = document.getElementById('category');
+  const subSelect = document.getElementById('subcategory');
+  if (catSelect) {
+    catSelect.value = 'expense';
+    catSelect.dispatchEvent(new Event('change'));
+    setTimeout(() => {
+      if (subSelect) subSelect.value = category;
+    }, 80);
+  }
+  const box = document.getElementById('aiSuggestionBox');
+  if (box) box.innerHTML = `<span class="text-green-600 font-medium">✅ Category set to <strong>${category}</strong></span>`;
+}
+
+let _suggestionTimer = null;
+
+function handleItemInput(event) {
+  const input = event.target.value.trim();
+  const box = document.getElementById('aiSuggestionBox');
+  if (!box) return;
+
+  if (input.length < 2) {
+    box.innerHTML = '';
+    return;
+  }
+
+  // Instant local suggestion
+  const local = localCategorize(input);
+  if (local) {
+    box.innerHTML = `<span class="text-blue-700">🤖 Suggested: </span>
+      <button onclick="applyAICategory('${local}')"
+        class="font-semibold text-blue-600 hover:text-blue-800 underline">${local}</button>
+      <span class="text-gray-400 ml-1">(tap to apply)</span>`;
+  }
+
+  // Also call backend for smarter suggestion (debounced)
+  clearTimeout(_suggestionTimer);
+  _suggestionTimer = setTimeout(async () => {
+    try {
+      const resp = await fetch('http://localhost:8000/api/suggest-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item: input,
+          amount: parseFloat(document.getElementById('amount')?.value) || 0,
+          type: 'expense',
+          entryDate: new Date().toISOString().split('T')[0]
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.suggested_category && data.confidence > 0.25) {
+          const pct = Math.round(data.confidence * 100);
+          box.innerHTML = `<span class="text-purple-700">🧠 AI suggests: </span>
+            <button onclick="applyAICategory('${data.suggested_category}')"
+              class="font-semibold text-purple-600 hover:text-purple-800 underline">${data.suggested_category}</button>
+            <span class="text-gray-400 ml-1">${pct}% confident · tap to apply</span>`;
+        }
+      }
+    } catch (_) { /* backend offline — local suggestion stays */ }
+  }, 600);
+}
+
+// Make applyAICategory global
+window.applyAICategory = applyAICategory;
 
 // Legacy table rendering for compatibility
 function renderTables() {
