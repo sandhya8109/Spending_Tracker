@@ -288,19 +288,19 @@ function createTransactionCard(t) {
   const dateStr = t.date ? new Date(t.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
 
   return `
-    <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition group" data-id="${t.id}">
+    <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition group" data-id="${t.id}">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-lg flex-shrink-0">${icon}</div>
+        <div class="w-9 h-9 rounded-full bg-white dark:bg-gray-600 shadow-sm flex items-center justify-center text-lg flex-shrink-0">${icon}</div>
         <div class="min-w-0">
-          <div class="text-sm font-medium text-gray-800 truncate">${escapeHtml(t.item)}</div>
-          <div class="text-xs text-gray-400">${t.subcategory || ''} · ${dateStr}</div>
+          <div class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">${escapeHtml(t.item)}</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500">${t.subcategory || ''} · ${dateStr}</div>
         </div>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         <span class="text-sm font-semibold ${color}">${sign}$${t.amount.toFixed(2)}</span>
         <div class="hidden group-hover:flex gap-1">
-          <button onclick="editTransaction('${t.id}')" class="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-50" title="Edit">✏️</button>
-          <button onclick="deleteTransaction('${t.id}')" class="text-xs text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded hover:bg-red-50" title="Delete">🗑️</button>
+          <button onclick="editTransaction('${t.id}')" class="text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Edit">✏️</button>
+          <button onclick="deleteTransaction('${t.id}')" class="text-xs text-red-500 hover:text-red-700 px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/30" title="Delete">🗑️</button>
         </div>
       </div>
     </div>`;
@@ -436,22 +436,22 @@ function createCategoryCard(text, data, type, budget, key) {
   const barColor = over ? 'bg-red-500' : pct > 75 ? 'bg-amber-400' : 'bg-green-500';
 
   return `
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="font-medium text-sm text-gray-800">${text}</span>
+        <span class="font-medium text-sm text-gray-800 dark:text-gray-100">${text}</span>
         <div class="flex items-center gap-2">
-          <span class="text-xs text-gray-500">Budget:</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">Budget:</span>
           <select data-key="${key}" onchange="handleBudgetChange('${key}', this.value)"
-            class="text-xs border border-gray-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+            class="text-xs border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-400">
             ${generateBudgetOptions(budget)}
           </select>
         </div>
       </div>
-      <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-        <span>Spent: <strong class="${over ? 'text-red-600' : 'text-gray-800'}">$${spent.toFixed(2)}</strong></span>
+      <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+        <span>Spent: <strong class="${over ? 'text-red-600' : 'text-gray-800 dark:text-gray-100'}">$${spent.toFixed(2)}</strong></span>
         <span>${pct.toFixed(0)}%${over ? ' ⚠️ Over budget!' : ''}</span>
       </div>
-      <div class="w-full bg-gray-100 rounded-full h-2">
+      <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
         <div class="${barColor} h-2 rounded-full transition-all" style="width:${pct}%"></div>
       </div>
     </div>`;
@@ -540,11 +540,11 @@ function goalProgressBar(label, current, target, pct, achieved) {
   const color = achieved ? 'bg-green-500' : pct > 75 ? 'bg-blue-500' : 'bg-indigo-400';
   return `
     <div>
-      <div class="flex justify-between text-xs text-gray-600 mb-1">
+      <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
         <span>${label}</span>
         <span class="${achieved ? 'text-green-600 font-semibold' : ''}">$${current.toFixed(2)} / $${target.toFixed(2)} ${achieved ? '✅' : ''}</span>
       </div>
-      <div class="w-full bg-gray-100 rounded-full h-2">
+      <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
         <div class="${color} h-2 rounded-full transition-all" style="width:${pct}%"></div>
       </div>
     </div>`;
@@ -620,8 +620,8 @@ function renderCustomCategories() {
   ['income', 'expense'].forEach(type => {
     (user.categories[type] || []).forEach(cat => {
       items.push(`
-        <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
-          <div class="text-sm"><span class="font-medium">${escapeHtml(cat.text)}</span> <span class="text-xs text-gray-400">${type} · $${cat.budget}/mo</span></div>
+        <div class="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div class="text-sm"><span class="font-medium dark:text-gray-100">${escapeHtml(cat.text)}</span> <span class="text-xs text-gray-400 dark:text-gray-500">${type} · $${cat.budget}/mo</span></div>
           <button onclick="deleteCustomCategory('${escapeHtml(cat.value)}','${type}')" class="text-red-400 hover:text-red-600 text-xs">✕</button>
         </div>`);
     });
@@ -1162,11 +1162,12 @@ window.updateDebugInfo = updateDebugInfo;
 // ── Notification system ───────────────────────────────────────────────────────
 
 function showNotification(message, type = 'info', duration = 3500) {
+  const dark = document.documentElement.classList.contains('dark');
   const colors = {
-    success: 'background:#dcfce7;color:#166534;border-left:4px solid #22c55e',
-    error:   'background:#fee2e2;color:#991b1b;border-left:4px solid #ef4444',
-    info:    'background:#e0f2fe;color:#075985;border-left:4px solid #0ea5e9',
-    warning: 'background:#fef3c7;color:#92400e;border-left:4px solid #f59e0b'
+    success: dark ? 'background:#14532d;color:#86efac;border-left:4px solid #22c55e' : 'background:#dcfce7;color:#166534;border-left:4px solid #22c55e',
+    error:   dark ? 'background:#450a0a;color:#fca5a5;border-left:4px solid #ef4444' : 'background:#fee2e2;color:#991b1b;border-left:4px solid #ef4444',
+    info:    dark ? 'background:#0c1a2e;color:#7dd3fc;border-left:4px solid #0ea5e9' : 'background:#e0f2fe;color:#075985;border-left:4px solid #0ea5e9',
+    warning: dark ? 'background:#2d1a00;color:#fcd34d;border-left:4px solid #f59e0b' : 'background:#fef3c7;color:#92400e;border-left:4px solid #f59e0b'
   };
   const style = colors[type] || colors.info;
   const el = document.createElement('div');
