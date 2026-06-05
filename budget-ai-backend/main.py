@@ -67,8 +67,8 @@ try:
 except ImportError:
     joblib = None
 
-# Auto-detect Tesseract installation
-if platform.system() == "Windows":
+# Auto-detect Tesseract installation (only if OCR available)
+if OPENCV_AVAILABLE and platform.system() == "Windows":
     possible_paths = [
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
